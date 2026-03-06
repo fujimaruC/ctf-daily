@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF Admin — Challenge Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #030912;
+  --bg2:      #060f1c;
+  --bg3:      #0a1628;
+  --accent:   #00c8ff;
+  --accent2:  #0055ff;
+  --green:    #00ff9d;
+  --orange:   #ff7b35;
+  --red:      #ff2d55;
+  --yellow:   #ffd060;
+  --purple:   #a855f7;
+  --text:     #b8d4ec;
+  --dim:      #3a5878;
+  --border:   rgba(0,180,255,0.12);
+  --panel:    rgba(0,140,255,0.04);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Rajdhani', sans-serif; font-size: 18px;
+  line-height: 1.6; overflow-x: hidden; min-height: 100vh;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0;
+  background-image: linear-gradient(rgba(0,180,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,180,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px; pointer-events: none;
+}
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  pointer-events: none;
+}
+
+/* ─── STATUS BAR ─── */
+.status-bar { position: fixed; top: 0; left: 0; right: 0; height: 36px; background: rgba(3,9,18,0.97); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; z-index: 200; backdrop-filter: blur(12px); }
+.status-left { display: flex; align-items: center; gap: 20px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+.status-label { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+.status-label span { color: var(--accent); }
+.status-right { display: flex; align-items: center; gap: 16px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); }
+#live-time { color: var(--accent); letter-spacing: 2px; }
+.logout-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--red); border: 1px solid rgba(255,45,85,0.3); padding: 3px 10px; cursor: pointer; background: rgba(255,45,85,0.05); transition: all 0.2s; }
+.logout-btn:hover { background: rgba(255,45,85,0.12); }
+
+/* ─── SIDEBAR ─── */
+.sidenav { position: fixed; left: 0; top: 36px; bottom: 0; width: 240px; background: rgba(3,9,18,0.97); border-right: 1px solid var(--border); z-index: 100; display: flex; flex-direction: column; padding: 28px 0; backdrop-filter: blur(12px); }
+.sidenav-logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.logo-text { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; letter-spacing: 3px; color: var(--accent); display: block; }
+.logo-sub { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-top: 4px; display: block; }
+.admin-badge { margin: 0 24px 20px; padding: 10px 14px; border: 1px solid rgba(168,85,247,0.3); background: rgba(168,85,247,0.05); }
+.admin-badge-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); margin-bottom: 4px; }
+.admin-badge-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: var(--purple); letter-spacing: 1px; }
+.nav-section-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); padding: 8px 24px 4px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 24px; text-decoration: none; color: var(--dim); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; transition: all 0.2s; cursor: pointer; border-left: 2px solid transparent; }
+.nav-item:hover { color: var(--text); border-left-color: rgba(0,200,255,0.3); background: rgba(0,180,255,0.03); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,200,255,0.05); }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* ─── MAIN ─── */
+.main { margin-left: 240px; padding-top: 36px; min-height: 100vh; position: relative; z-index: 1; }
+.section { padding: 52px; border-bottom: 1px solid var(--border); }
+.section:last-child { border-bottom: none; }
+.sec-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+.sec-num { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 2px; opacity: 0.6; }
+.sec-title { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; letter-spacing: 4px; color: var(--text); }
+.sec-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ─── HERO ─── */
+.hero { padding: 52px 52px 44px; background: radial-gradient(ellipse at 80% 0%, rgba(0,200,255,0.06) 0%, transparent 60%); border-bottom: 1px solid var(--border); }
+.hero-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 5px; color: var(--accent); opacity: 0.8; margin-bottom: 12px; display: block; }
+.hero-title { font-family: 'Orbitron', monospace; font-size: clamp(24px, 3vw, 40px); font-weight: 900; letter-spacing: 5px; background: linear-gradient(135deg, #fff 0%, var(--accent) 60%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+.hero-sub { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+
+/* ─── UPLOAD FORM ─── */
+.upload-form { background: rgba(6,15,28,0.8); border: 1px solid var(--border); padding: 36px; position: relative; }
+.upload-form::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.5; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--dim); text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.form-label-num { color: var(--accent); opacity: 0.7; }
+.form-input, .form-select, .form-textarea {
+  background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+  color: var(--text); font-family: 'Share Tech Mono', monospace;
+  font-size: 14px; padding: 12px 16px; outline: none;
+  transition: all 0.2s; letter-spacing: 1px; width: 100%;
+}
+.form-input::placeholder, .form-textarea::placeholder { color: var(--dim); opacity: 0.45; font-size: 12px; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: rgba(0,200,255,0.4); box-shadow: 0 0 0 1px rgba(0,200,255,0.08); background: rgba(0,20,40,0.4); }
+.form-select option { background: var(--bg2); color: var(--text); }
+.form-textarea { resize: vertical; min-height: 120px; line-height: 1.7; font-size: 14px; }
+
+/* Hints builder */
+.hints-builder { display: flex; flex-direction: column; gap: 10px; }
+.hint-row { display: flex; gap: 10px; align-items: center; }
+.hint-row .form-input { flex: 1; }
+.hint-remove-btn { font-family: 'Share Tech Mono', monospace; font-size: 11px; padding: 10px 14px; border: 1px solid rgba(255,45,85,0.3); color: var(--red); background: transparent; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+.hint-remove-btn:hover { background: rgba(255,45,85,0.08); }
+.add-hint-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 9px 16px; border: 1px solid rgba(0,200,255,0.3); color: var(--accent); background: transparent; cursor: pointer; transition: all 0.2s; align-self: flex-start; }
+.add-hint-btn:hover { background: rgba(0,200,255,0.06); }
+
+/* Flag preview */
+.flag-preview { display: flex; align-items: center; gap: 0; margin-top: 6px; }
+.flag-preview-prefix { font-family: 'Share Tech Mono', monospace; font-size: 14px; color: var(--accent); background: rgba(0,200,255,0.06); border: 1px solid var(--border); border-right: none; padding: 12px 14px; white-space: nowrap; }
+.flag-preview-val { font-family: 'Share Tech Mono', monospace; font-size: 14px; color: var(--green); background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-left: none; padding: 12px 14px; flex: 1; letter-spacing: 1px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Submit row */
+.form-submit-row { display: flex; gap: 12px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.submit-btn { font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 3px; padding: 14px 32px; border: 1px solid; cursor: pointer; background: transparent; transition: all 0.25s; position: relative; overflow: hidden; }
+.submit-btn.accent { border-color: var(--accent); color: var(--accent); }
+.submit-btn.accent:hover { background: rgba(0,200,255,0.07); box-shadow: 0 0 20px rgba(0,200,255,0.15); }
+.submit-btn.green { border-color: var(--green); color: var(--green); }
+.submit-btn.green:hover { background: rgba(0,255,157,0.07); box-shadow: 0 0 20px rgba(0,255,157,0.15); }
+.submit-btn.red-btn { border-color: var(--red); color: var(--red); }
+.submit-btn.red-btn:hover { background: rgba(255,45,85,0.07); }
+
+/* ─── CHALLENGE LIST ─── */
+.challenge-list { display: flex; flex-direction: column; gap: 14px; }
+.challenge-card { background: rgba(6,15,28,0.7); border: 1px solid var(--border); padding: 24px 28px; position: relative; transition: border-color 0.2s; }
+.challenge-card:hover { border-color: rgba(0,200,255,0.2); }
+.challenge-card.is-active { border-color: rgba(0,255,157,0.25); }
+.challenge-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); }
+.challenge-card.is-active::before { background: linear-gradient(90deg, transparent, var(--green), transparent); opacity: 0.5; }
+.card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.card-info { flex: 1; min-width: 0; }
+.card-date { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); margin-bottom: 6px; }
+.card-title { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 700; letter-spacing: 2px; color: var(--text); margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.badge { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 3px 10px; border: 1px solid; }
+.badge-easy { border-color: rgba(0,255,157,0.4); color: var(--green); background: rgba(0,255,157,0.06); }
+.badge-medium { border-color: rgba(255,208,96,0.4); color: var(--yellow); background: rgba(255,208,96,0.06); }
+.badge-hard { border-color: rgba(255,45,85,0.4); color: var(--red); background: rgba(255,45,85,0.06); }
+.badge-cat { border-color: rgba(0,200,255,0.3); color: var(--accent); background: rgba(0,200,255,0.05); }
+.badge-pts { border-color: rgba(168,85,247,0.4); color: var(--purple); background: rgba(168,85,247,0.06); }
+.badge-active { border-color: rgba(0,255,157,0.4); color: var(--green); background: rgba(0,255,157,0.08); }
+.badge-inactive { border-color: rgba(58,88,120,0.4); color: var(--dim); background: transparent; }
+.card-desc { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 1px; line-height: 1.6; max-width: 600px; }
+.card-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+.action-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 8px 16px; border: 1px solid; cursor: pointer; transition: all 0.2s; background: transparent; white-space: nowrap; }
+.action-btn.green { border-color: rgba(0,255,157,0.4); color: var(--green); }
+.action-btn.green:hover { background: rgba(0,255,157,0.08); }
+.action-btn.red { border-color: rgba(255,45,85,0.4); color: var(--red); }
+.action-btn.red:hover { background: rgba(255,45,85,0.08); }
+.action-btn.accent { border-color: rgba(0,200,255,0.4); color: var(--accent); }
+.action-btn.accent:hover { background: rgba(0,200,255,0.07); }
+.action-btn.orange { border-color: rgba(255,123,53,0.4); color: var(--orange); }
+.action-btn.orange:hover { background: rgba(255,123,53,0.08); }
+
+/* ─── SEARCH & FILTER BAR ─── */
+.list-controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+.filter-input { background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 8px 14px; outline: none; transition: border-color 0.2s; letter-spacing: 1px; }
+.filter-input:focus { border-color: rgba(0,200,255,0.4); }
+.filter-input::placeholder { color: var(--dim); font-size: 11px; }
+.filter-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 8px 14px; border: 1px solid var(--border); color: var(--dim); cursor: pointer; background: transparent; transition: all 0.2s; }
+.filter-btn.active, .filter-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.05); }
+
+/* ─── MODAL ─── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(3,9,18,0.85); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--bg2); border: 1px solid var(--border); padding: 36px; width: 100%; max-width: 560px; position: relative; animation: fadeInUp 0.3s ease; max-height: 90vh; overflow-y: auto; }
+.modal::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--red), transparent); opacity: 0.6; }
+.modal-title { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 700; letter-spacing: 3px; color: var(--red); margin-bottom: 14px; }
+.modal-sub { font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 1px; color: var(--dim); margin-bottom: 28px; line-height: 1.7; }
+.modal-actions { display: flex; gap: 12px; }
+
+/* ─── FORM MSG ─── */
+.form-msg { margin-top: 14px; padding: 12px 16px; font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 1px; display: none; }
+.form-msg.error { display: block; border: 1px solid rgba(255,45,85,0.3); color: var(--red); background: rgba(255,45,85,0.05); }
+.form-msg.success { display: block; border: 1px solid rgba(0,255,157,0.3); color: var(--green); background: rgba(0,255,157,0.05); }
+.form-msg.loading { display: block; border: 1px solid rgba(0,200,255,0.2); color: var(--accent); background: rgba(0,200,255,0.04); }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 1px solid rgba(0,200,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+
+/* ─── PAGE LOADER ─── */
+.page-loader { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; transition: opacity 0.4s; }
+.page-loader.hidden { opacity: 0; pointer-events: none; }
+.loader-text { font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 4px; color: var(--accent); animation: pulse 1.5s infinite; }
+.loader-bar { width: 200px; height: 2px; background: var(--border); position: relative; overflow: hidden; }
+.loader-bar::after { content: ''; position: absolute; left: -40%; top: 0; bottom: 0; width: 40%; background: var(--accent); animation: loadSlide 1s ease infinite; }
+
+/* ─── CORNER ─── */
+.corner { position: fixed; width: 50px; height: 50px; z-index: 2; pointer-events: none; }
+.corner-tl { top: 44px; left: 250px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.2; }
+.corner-tr { top: 44px; right: 16px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.2; }
+.corner-bl { bottom: 16px; left: 250px; border-bottom: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.2; }
+.corner-br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.2; }
+
+</style>
+</head>
+<body>
+
+<!-- Page Loader -->
+<div class="page-loader" id="page-loader">
+  <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:900;letter-spacing:6px;color:var(--accent)">CHALLENGE MGR</div>
+  <div class="loader-bar"></div>
+  <div class="loader-text">LOADING CHALLENGE DATABASE...</div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-title">◈ CONFIRM DELETE</div>
+    <div class="modal-sub" id="delete-modal-text">Are you sure you want to delete this challenge? This action cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="submit-btn red-btn" onclick="confirmDelete()">DELETE</button>
+      <button class="submit-btn accent" onclick="closeModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Corner Deco -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-left">
+    <div class="status-dot"></div>
+    <span class="status-label">CHALLENGE <span>MANAGER</span></span>
+    <span class="status-label">CTF-PLATFORM <span>v1.0</span></span>
+  </div>
+  <div class="status-right">
+    <span id="live-time"></span>
+    <div class="logout-btn" onclick="handleLogout()">◈ LOGOUT</div>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidenav">
+  <div class="sidenav-logo">
+    <span class="logo-text">CTF DAILY</span>
+    <span class="logo-sub">ADMIN COMMAND CENTER</span>
+  </div>
+  <div class="admin-badge">
+    <div class="admin-badge-label">LOGGED IN AS</div>
+    <div class="admin-badge-name" id="admin-name">ADMIN</div>
+  </div>
+  <div class="nav-section-label">DASHBOARD</div>
+  <div class="nav-item" onclick="window.location.href='admin.html'">
+    <span class="nav-dot"></span> OVERVIEW
+  </div>
+  <div class="nav-section-label" style="margin-top:12px;">MANAGEMENT</div>
+  <div class="nav-item active">
+    <span class="nav-dot"></span> MANAGE CHALLENGES
+  </div>
+  <div class="nav-item" onclick="window.location.href='admin-students.html'">
+    <span class="nav-dot"></span> MANAGE STUDENTS
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main" id="main-content" style="display:none;">
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="hero-label">CHALLENGE CONTROL — UPLOAD · EDIT · SCHEDULE</span>
+    <div class="hero-title">CHALLENGE MANAGER</div>
+    <div class="hero-sub">CREATE AND SCHEDULE DAILY MISSIONS FOR STUDENTS</div>
+  </div>
+
+  <!-- ══════ SECTION 01: UPLOAD / EDIT ══════ -->
+  <section class="section anim-in" id="section-upload">
+    <div class="sec-header">
+      <span class="sec-num">01</span>
+      <span class="sec-title" id="form-section-title">UPLOAD NEW CHALLENGE</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <div class="upload-form">
+      <div class="form-grid">
+
+        <!-- Title -->
+        <div class="form-group full">
+          <div class="form-label"><span class="form-label-num">01</span> CHALLENGE TITLE</div>
+          <input type="text" class="form-input" id="f-title" placeholder="e.g. THE HIDDEN MESSAGE..." />
+        </div>
+
+        <!-- Date & Category -->
+        <div class="form-group">
+          <div class="form-label"><span class="form-label-num">02</span> SCHEDULED DATE</div>
+          <input type="date" class="form-input" id="f-date" />
+        </div>
+        <div class="form-group">
+          <div class="form-label"><span class="form-label-num">03</span> CATEGORY</div>
+          <select class="form-select" id="f-category">
+            <option value="web">WEB</option>
+            <option value="crypto">CRYPTO</option>
+            <option value="forensics">FORENSICS</option>
+            <option value="reverse">REVERSE ENGINEERING</option>
+            <option value="pwn">PWN</option>
+            <option value="osint">OSINT</option>
+            <option value="misc">MISC</option>
+          </select>
+        </div>
+
+        <!-- Difficulty & Points -->
+        <div class="form-group">
+          <div class="form-label"><span class="form-label-num">04</span> DIFFICULTY</div>
+          <select class="form-select" id="f-difficulty">
+            <option value="easy">EASY</option>
+            <option value="medium">MEDIUM</option>
+            <option value="hard">HARD</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label"><span class="form-label-num">05</span> POINTS</div>
+          <input type="number" class="form-input" id="f-points" placeholder="100" min="10" max="1000" />
+        </div>
+
+        <!-- Description -->
+        <div class="form-group full">
+          <div class="form-label"><span class="form-label-num">06</span> MISSION DESCRIPTION</div>
+          <textarea class="form-textarea" id="f-description" placeholder="Write the full challenge description here. Be creative! Set the scene, provide context, and give students enough information to get started..."></textarea>
+        </div>
+
+        <!-- Flag -->
+        <div class="form-group full">
+          <div class="form-label"><span class="form-label-num">07</span> FLAG (FULL FORMAT WITH CTF{})</div>
+          <input type="text" class="form-input" id="f-flag" placeholder="CTF{your_flag_here}" oninput="updateFlagPreview()" />
+          <div class="flag-preview">
+            <div class="flag-preview-val" id="flag-preview-val" style="flex:1; text-align:left;">CTF{your_flag_here}</div>
+          </div>
+        </div>
+
+        <!-- Hints -->
+        <div class="form-group full">
+          <div class="form-label"><span class="form-label-num">08</span> HINTS (OPTIONAL)</div>
+          <div class="hints-builder" id="hints-builder">
+            <div class="hint-row">
+              <input type="text" class="form-input" placeholder="Hint 1..." />
+              <button class="hint-remove-btn" onclick="removeHint(this)">✕</button>
+            </div>
+          </div>
+          <button class="add-hint-btn" onclick="addHint()" style="margin-top:10px;">+ ADD HINT</button>
+        </div>
+
+        <!-- File URL -->
+        <div class="form-group full">
+          <div class="form-label"><span class="form-label-num">09</span> CHALLENGE FILE URL (OPTIONAL)</div>
+          <input type="url" class="form-input" id="f-fileurl" placeholder="https://drive.google.com/... or https://github.com/..." />
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--dim);margin-top:8px;">Paste a Google Drive, GitHub, or any direct download link. Students will see a download button.</div>
+        </div>
+        <div class="form-group full" id="f-filename-group">
+          <div class="form-label"><span class="form-label-num">09b</span> FILE DISPLAY NAME (OPTIONAL)</div>
+          <input type="text" class="form-input" id="f-filename" placeholder="e.g. secret_message.zip" />
+        </div>
+
+        <!-- Active toggle -->
+        <div class="form-group full">
+          <div class="form-label"><span class="form-label-num">10</span> STATUS</div>
+          <select class="form-select" id="f-active">
+            <option value="false">○ INACTIVE — Activate manually later</option>
+            <option value="true">● ACTIVE — Visible to students immediately</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div class="form-submit-row">
+        <button class="submit-btn green" onclick="saveChallenge()" id="save-btn">◈ SAVE CHALLENGE</button>
+        <button class="submit-btn accent" onclick="resetForm()" id="cancel-edit-btn" style="display:none;">✕ CANCEL EDIT</button>
+      </div>
+      <div class="form-msg" id="upload-msg"></div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 02: CHALLENGE LIST ══════ -->
+  <section class="section anim-in" id="section-list">
+    <div class="sec-header">
+      <span class="sec-num">02</span>
+      <span class="sec-title">CHALLENGE DATABASE</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <div class="list-controls">
+      <input type="text" class="filter-input" id="list-search" placeholder="Search challenges..." style="min-width:220px;" oninput="renderList()" />
+      <div class="filter-btn active" onclick="setListFilter('all',this)">ALL</div>
+      <div class="filter-btn" onclick="setListFilter('active',this)">ACTIVE</div>
+      <div class="filter-btn" onclick="setListFilter('inactive',this)">INACTIVE</div>
+      <div class="filter-btn" onclick="setListFilter('today',this)">TODAY</div>
+    </div>
+
+    <div class="challenge-list" id="challenge-list">
+      <div class="empty-state">
+        <div class="loader-bar" style="margin:0 auto 16px;"></div>
+        <div class="empty-title">LOADING CHALLENGES...</div>
+      </div>
+    </div>
+    <div class="form-msg" id="list-msg"></div>
+  </section>
+
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, collection,
+    query, orderBy, getDocs, addDoc, updateDoc,
+    deleteDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCDB4kvtHeCGJco1inelv-WRk09Xyuz5oY",
+  authDomain: "ctf-smk.firebaseapp.com",
+  projectId: "ctf-smk",
+  storageBucket: "ctf-smk.firebasestorage.app",
+  messagingSenderId: "983856640913",
+  appId: "1:983856640913:web:3d584d18c802885020a030"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let allChallenges = [];
+  let listFilter = 'all';
+  let editingId = null;
+  let deleteTargetId = null;
+
+  // ─── AUTH GUARD ───
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') { window.location.href = 'index.html'; return; }
+    document.getElementById('admin-name').textContent = userDoc.data().name?.toUpperCase() || 'ADMIN';
+    await loadChallenges();
+    document.getElementById('page-loader').classList.add('hidden');
+    document.getElementById('main-content').style.display = 'block';
+  });
+
+  // ─── LOAD CHALLENGES ───
+  async function loadChallenges() {
+    const snap = await getDocs(query(collection(db, 'challenges'), orderBy('date', 'desc')));
+    allChallenges = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderList();
+  }
+
+  // ─── RENDER LIST ───
+  window.renderList = function() {
+    const search = document.getElementById('list-search').value.toLowerCase();
+    const today = getToday();
+    let data = allChallenges;
+    if (listFilter === 'active') data = data.filter(c => c.active);
+    if (listFilter === 'inactive') data = data.filter(c => !c.active);
+    if (listFilter === 'today') data = data.filter(c => c.date === today);
+    if (search) data = data.filter(c => c.title?.toLowerCase().includes(search) || c.category?.toLowerCase().includes(search));
+
+    const container = document.getElementById('challenge-list');
+    if (data.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-title">NO CHALLENGES FOUND</div><div class="empty-sub">UPLOAD YOUR FIRST CHALLENGE ABOVE</div></div>`;
+      return;
+    }
+
+    const diffClass = { easy: 'badge-easy', medium: 'badge-medium', hard: 'badge-hard' };
+    container.innerHTML = data.map(c => `
+      <div class="challenge-card ${c.active ? 'is-active' : ''}">
+        <div class="card-row">
+          <div class="card-info">
+            <div class="card-date">${c.date || 'NO DATE'}</div>
+            <div class="card-title">${c.title || 'UNTITLED'}</div>
+            <div class="card-meta">
+              <span class="badge ${diffClass[c.difficulty] || 'badge-cat'}">${(c.difficulty || 'UNKNOWN').toUpperCase()}</span>
+              <span class="badge badge-cat">${(c.category || 'MISC').toUpperCase()}</span>
+              <span class="badge badge-pts">◈ ${c.points || 100} PTS</span>
+              <span class="badge ${c.active ? 'badge-active' : 'badge-inactive'}">${c.active ? '● ACTIVE' : '○ INACTIVE'}</span>
+            </div>
+            <div class="card-desc">${(c.description || '').substring(0, 120)}${(c.description || '').length > 120 ? '...' : ''}</div>
+          </div>
+          <div class="card-actions">
+            ${c.active
+              ? `<button class="action-btn red" onclick="toggleActive('${c.id}', false)">○ DEACTIVATE</button>`
+              : `<button class="action-btn green" onclick="toggleActive('${c.id}', true)">● ACTIVATE</button>`
+            }
+            <button class="action-btn accent" onclick="editChallenge('${c.id}')">✎ EDIT</button>
+            <button class="action-btn red" onclick="openDeleteModal('${c.id}', '${(c.title || '').replace(/'/g, "\\'")}')">✕ DELETE</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  // ─── SET LIST FILTER ───
+  window.setListFilter = function(f, el) {
+    listFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderList();
+  };
+
+  // ─── SAVE CHALLENGE ───
+  window.saveChallenge = async function() {
+    const title = document.getElementById('f-title').value.trim();
+    const date = document.getElementById('f-date').value;
+    const category = document.getElementById('f-category').value;
+    const difficulty = document.getElementById('f-difficulty').value;
+    const points = parseInt(document.getElementById('f-points').value) || 100;
+    const description = document.getElementById('f-description').value.trim();
+    const flag = document.getElementById('f-flag').value.trim();
+    const active = document.getElementById('f-active').value === 'true';
+
+    if (!title || !date || !description || !flag) {
+      showMsg('upload-msg', 'FILL IN ALL REQUIRED FIELDS', 'error'); return;
+    }
+
+    const hints = Array.from(document.querySelectorAll('#hints-builder .hint-row input'))
+      .map(i => i.value.trim()).filter(Boolean);
+
+    const fileUrl = document.getElementById('f-fileurl').value.trim();
+    const fileName = document.getElementById('f-filename').value.trim();
+    const payload = { title, date, category, difficulty, points, description, flag, hints, active,
+      fileUrl: fileUrl || '', fileName: fileName || '',
+      updatedAt: serverTimestamp() };
+
+    showMsg('upload-msg', editingId ? 'UPDATING CHALLENGE...' : 'SAVING CHALLENGE...', 'loading');
+    document.getElementById('save-btn').disabled = true;
+
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, 'challenges', editingId), payload);
+      } else {
+        payload.createdAt = serverTimestamp();
+        await addDoc(collection(db, 'challenges'), payload);
+      }
+
+      showMsg('upload-msg', editingId ? 'CHALLENGE UPDATED SUCCESSFULLY' : 'CHALLENGE SAVED SUCCESSFULLY', 'success');
+      resetForm();
+      await loadChallenges();
+    } catch (e) {
+      showMsg('upload-msg', 'ERROR — ' + e.message, 'error');
+    }
+    document.getElementById('save-btn').disabled = false;
+  };
+
+  // ─── EDIT CHALLENGE ───
+  window.editChallenge = function(id) {
+    const c = allChallenges.find(x => x.id === id);
+    if (!c) return;
+    editingId = id;
+
+    document.getElementById('f-title').value = c.title || '';
+    document.getElementById('f-date').value = c.date || '';
+    document.getElementById('f-category').value = c.category || 'misc';
+    document.getElementById('f-difficulty').value = c.difficulty || 'easy';
+    document.getElementById('f-points').value = c.points || 100;
+    document.getElementById('f-description').value = c.description || '';
+    document.getElementById('f-flag').value = c.flag || '';
+    document.getElementById('f-active').value = c.active ? 'true' : 'false';
+    updateFlagPreview();
+
+    // Rebuild hints
+    const builder = document.getElementById('hints-builder');
+    builder.innerHTML = '';
+    const hints = c.hints && c.hints.length > 0 ? c.hints : [''];
+    hints.forEach(h => {
+      const row = document.createElement('div');
+      row.className = 'hint-row';
+      row.innerHTML = `<input type="text" class="form-input" placeholder="Hint..." value="${h}" /><button class="hint-remove-btn" onclick="removeHint(this)">✕</button>`;
+      builder.appendChild(row);
+    });
+
+    document.getElementById('f-fileurl').value = c.fileUrl || '';
+    document.getElementById('f-filename').value = c.fileName || '';
+    document.getElementById('form-section-title').textContent = 'EDIT CHALLENGE';
+    document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+    document.getElementById('section-upload').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // ─── TOGGLE ACTIVE ───
+  window.toggleActive = async function(id, val) {
+    try {
+      await updateDoc(doc(db, 'challenges', id), { active: val });
+      await loadChallenges();
+      showMsg('list-msg', `CHALLENGE ${val ? 'ACTIVATED' : 'DEACTIVATED'}`, 'success');
+    } catch(e) {
+      showMsg('list-msg', 'ERROR — TRY AGAIN', 'error');
+    }
+  };
+
+  // ─── DELETE ───
+  window.openDeleteModal = function(id, title) {
+    deleteTargetId = id;
+    document.getElementById('delete-modal-text').textContent = `Delete "${title}"? This cannot be undone.`;
+    document.getElementById('delete-modal').classList.add('open');
+  };
+  window.closeModal = function() {
+    document.getElementById('delete-modal').classList.remove('open');
+    deleteTargetId = null;
+  };
+  window.confirmDelete = async function() {
+    if (!deleteTargetId) return;
+    try {
+      await deleteDoc(doc(db, 'challenges', deleteTargetId));
+      closeModal();
+      await loadChallenges();
+      showMsg('list-msg', 'CHALLENGE DELETED', 'success');
+    } catch(e) {
+      showMsg('list-msg', 'DELETE FAILED', 'error');
+    }
+  };
+
+  // ─── RESET FORM ───
+  window.resetForm = function() {
+    editingId = null;
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-date').value = getToday();
+    document.getElementById('f-category').value = 'web';
+    document.getElementById('f-difficulty').value = 'easy';
+    document.getElementById('f-points').value = '';
+    document.getElementById('f-description').value = '';
+    document.getElementById('f-flag').value = '';
+    document.getElementById('f-active').value = 'false';
+    document.getElementById('f-fileurl').value = '';
+    document.getElementById('f-filename').value = '';
+    document.getElementById('flag-preview-val').textContent = 'CTF{your_flag_here}';
+    document.getElementById('hints-builder').innerHTML = `<div class="hint-row"><input type="text" class="form-input" placeholder="Hint 1..." /><button class="hint-remove-btn" onclick="removeHint(this)">✕</button></div>`;
+    document.getElementById('form-section-title').textContent = 'UPLOAD NEW CHALLENGE';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
+    document.getElementById('upload-msg').style.display = 'none';
+  };
+
+  // ─── FLAG PREVIEW ───
+  window.updateFlagPreview = function() {
+    const val = document.getElementById('f-flag').value || 'CTF{your_flag_here}';
+    document.getElementById('flag-preview-val').textContent = val;
+  };
+
+  // ─── HINTS ───
+  window.addHint = function() {
+    const builder = document.getElementById('hints-builder');
+    const count = builder.children.length + 1;
+    const row = document.createElement('div');
+    row.className = 'hint-row';
+    row.innerHTML = `<input type="text" class="form-input" placeholder="Hint ${count}..." /><button class="hint-remove-btn" onclick="removeHint(this)">✕</button>`;
+    builder.appendChild(row);
+  };
+  window.removeHint = function(btn) {
+    btn.parentElement.remove();
+  };
+
+  // ─── LOGOUT ───
+  window.handleLogout = async function() {
+    await signOut(auth);
+    window.location.href = 'index.html';
+  };
+
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.className = `form-msg ${type}`;
+    el.innerHTML = type === 'loading' ? `<span class="spinner"></span>${text}` : `${text}`;
+  }
+
+  function getToday() { return new Date().toISOString().split('T')[0]; }
+
+  // Set default date to today
+  document.getElementById('f-date').value = getToday();
+</script>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('live-time').textContent =
+    `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} · ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+
+</body>
+</html>

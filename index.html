@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF Daily Challenge — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #030912;
+  --bg2:      #060f1c;
+  --bg3:      #0a1628;
+  --accent:   #00c8ff;
+  --accent2:  #0055ff;
+  --green:    #00ff9d;
+  --orange:   #ff7b35;
+  --red:      #ff2d55;
+  --yellow:   #ffd060;
+  --purple:   #a855f7;
+  --text:     #b8d4ec;
+  --dim:      #3a5878;
+  --border:   rgba(0,180,255,0.12);
+  --panel:    rgba(0,140,255,0.04);
+  --glow:     0 0 20px rgba(0,200,255,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── GRID BACKGROUND ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,180,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,180,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* ─── SCAN LINE OVERLAY ─── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* ─── CORNER DECORATIONS ─── */
+.corner {
+  position: fixed;
+  width: 60px; height: 60px;
+  z-index: 2;
+  pointer-events: none;
+}
+.corner-tl { top: 20px; left: 20px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.4; }
+.corner-tr { top: 20px; right: 20px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.4; }
+.corner-bl { bottom: 20px; left: 20px; border-bottom: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.4; }
+.corner-br { bottom: 20px; right: 20px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.4; }
+
+/* ─── STATUS BAR ─── */
+.status-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 32px;
+  background: rgba(3,9,18,0.95);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s infinite;
+}
+.status-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.status-label span { color: var(--accent); }
+.status-right {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+#live-time { color: var(--accent); }
+
+/* ─── MAIN LOGIN WRAPPER ─── */
+.login-wrapper {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 580px;
+  padding: 20px;
+  animation: fadeInUp 0.8s ease both;
+}
+
+/* ─── HEADER ─── */
+.login-header {
+  text-align: center;
+  margin-bottom: 40px;
+  animation: fadeInUp 0.8s ease 0.1s both;
+}
+.login-sys-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 5px;
+  color: var(--accent);
+  opacity: 0.7;
+  margin-bottom: 12px;
+  display: block;
+}
+.login-title {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(40px, 8vw, 64px);
+  font-weight: 900;
+  letter-spacing: 8px;
+  line-height: 1;
+  background: linear-gradient(135deg, #fff 0%, var(--accent) 40%, var(--accent2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 10px;
+}
+.login-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: var(--dim);
+}
+
+/* ─── PANEL ─── */
+.login-panel {
+  background: rgba(6,15,28,0.9);
+  border: 1px solid var(--border);
+  padding: 44px 40px;
+  position: relative;
+  backdrop-filter: blur(12px);
+  animation: fadeInUp 0.8s ease 0.2s both;
+}
+.login-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.6;
+}
+
+/* ─── PANEL HEADER ─── */
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-num {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  opacity: 0.7;
+}
+.panel-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--text);
+}
+.panel-badge {
+  margin-left: auto;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 4px 10px;
+  border: 1px solid rgba(0,200,255,0.3);
+  color: var(--accent);
+  background: rgba(0,200,255,0.05);
+}
+
+/* ─── ROLE SELECTOR ─── */
+.role-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.role-btn {
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  text-transform: uppercase;
+}
+.role-btn:hover {
+  border-color: rgba(0,200,255,0.3);
+  color: var(--text);
+}
+.role-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,200,255,0.07);
+  box-shadow: 0 0 12px rgba(0,200,255,0.1);
+}
+
+/* ─── FORM ─── */
+.form-group {
+  margin-bottom: 20px;
+}
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.form-label-num {
+  color: var(--accent);
+  opacity: 0.7;
+}
+.form-input {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-top-color: rgba(0,180,255,0.08);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  padding: 14px 18px;
+  outline: none;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+.form-input::placeholder {
+  color: var(--dim);
+  opacity: 0.5;
+  font-size: 13px;
+}
+.form-input:focus {
+  border-color: rgba(0,200,255,0.4);
+  box-shadow: 0 0 0 1px rgba(0,200,255,0.1), inset 0 0 20px rgba(0,200,255,0.03);
+  background: rgba(0,20,40,0.4);
+}
+
+/* ─── SUBMIT BUTTON ─── */
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,200,255,0.1), rgba(0,85,255,0.1));
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.submit-btn:hover::before { opacity: 1; }
+.submit-btn:hover {
+  box-shadow: 0 0 20px rgba(0,200,255,0.2), inset 0 0 20px rgba(0,200,255,0.05);
+  text-shadow: 0 0 8px rgba(0,200,255,0.6);
+}
+.submit-btn:active { transform: scale(0.99); }
+
+/* ─── ERROR / STATUS MESSAGE ─── */
+.form-msg {
+  margin-top: 16px;
+  padding: 12px 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  display: none;
+}
+.form-msg.error {
+  display: block;
+  border: 1px solid rgba(255,45,85,0.3);
+  color: var(--red);
+  background: rgba(255,45,85,0.05);
+}
+.form-msg.success {
+  display: block;
+  border: 1px solid rgba(0,255,157,0.3);
+  color: var(--green);
+  background: rgba(0,255,157,0.05);
+}
+.form-msg.loading {
+  display: block;
+  border: 1px solid rgba(0,200,255,0.2);
+  color: var(--accent);
+  background: rgba(0,200,255,0.04);
+}
+
+/* ─── FOOTER INFO ─── */
+.login-footer {
+  text-align: center;
+  margin-top: 24px;
+  animation: fadeInUp 0.8s ease 0.3s both;
+}
+.login-footer-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+.login-footer-text span { color: var(--accent); opacity: 0.7; }
+
+/* ─── DECORATIVE SIDE LINES ─── */
+.deco-line {
+  position: fixed;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(0,180,255,0.08), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+.deco-line-l { left: 220px; }
+.deco-line-r { right: 220px; }
+
+/* ─── FLOATING PARTICLES ─── */
+.particles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  width: 2px; height: 2px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  animation: floatUp var(--dur) linear var(--delay) infinite;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes floatUp {
+  0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.1; }
+  100% { transform: translateY(-10vh) translateX(20px); opacity: 0; }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink {
+  display: inline-block;
+  width: 8px; height: 12px;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+/* ─── LOADING SPINNER ─── */
+.spinner {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 1px solid rgba(0,200,255,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-left">
+    <div class="status-dot"></div>
+    <span class="status-label">SYSTEM <span>ONLINE</span></span>
+    <span class="status-label">CTF-PLATFORM <span>v1.0</span></span>
+  </div>
+  <div class="status-right">
+    <span id="live-time"></span>
+  </div>
+</div>
+
+<!-- Corner Decorations -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- Decorative Lines -->
+<div class="deco-line deco-line-l"></div>
+<div class="deco-line deco-line-r"></div>
+
+<!-- Floating Particles -->
+<div class="particles" id="particles"></div>
+
+<!-- Main Login -->
+<div class="login-wrapper">
+
+  <!-- Header -->
+  <div class="login-header">
+    <span class="login-sys-label">SECURE ACCESS TERMINAL</span>
+    <div class="login-title">CTF DAILY</div>
+    <div class="login-subtitle">CHALLENGE PLATFORM <span class="cursor-blink"></span></div>
+  </div>
+
+  <!-- Login Panel -->
+  <div class="login-panel">
+    <div class="panel-header">
+      <span class="panel-num">01</span>
+      <span class="panel-title">AUTHENTICATION</span>
+      <span class="panel-badge">SECURE</span>
+    </div>
+
+    <!-- Role Selector -->
+    <div class="role-selector">
+      <div class="role-btn active" onclick="setRole('student')" id="role-student">
+        ◈ STUDENT
+      </div>
+      <div class="role-btn" onclick="setRole('admin')" id="role-admin">
+        ◈ ADMIN
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="form-group">
+      <div class="form-label">
+        <span class="form-label-num">01</span> IDENTIFIER
+      </div>
+      <input type="text" class="form-input" id="input-name" placeholder="Enter your name..." autocomplete="off" />
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">
+        <span class="form-label-num">02</span> ACCESS KEY
+      </div>
+      <input type="password" class="form-input" id="input-password" placeholder="Enter password..." autocomplete="off" />
+    </div>
+
+    <button class="submit-btn" onclick="handleLogin()" id="login-btn">
+      INITIALIZE SESSION
+    </button>
+
+    <div class="form-msg" id="form-msg"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="login-footer">
+    <div class="login-footer-text">AUTHORIZED ACCESS ONLY &nbsp;·&nbsp; <span>CTF PLATFORM</span> &nbsp;·&nbsp; ALL SESSIONS LOGGED</div>
+  </div>
+
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ─── FIREBASE CONFIG ───
+  // TODO: Replace with your actual Firebase config
+  const firebaseConfig = {
+  apiKey: "AIzaSyCDB4kvtHeCGJco1inelv-WRk09Xyuz5oY",
+  authDomain: "ctf-smk.firebaseapp.com",
+  projectId: "ctf-smk",
+  storageBucket: "ctf-smk.firebasestorage.app",
+  messagingSenderId: "983856640913",
+  appId: "1:983856640913:web:3d584d18c802885020a030"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // ─── ROLE STATE ───
+  let currentRole = 'student';
+
+  window.setRole = function(role) {
+    currentRole = role;
+    document.getElementById('role-student').classList.toggle('active', role === 'student');
+    document.getElementById('role-admin').classList.toggle('active', role === 'admin');
+    document.getElementById('input-name').placeholder = role === 'admin' ? 'Admin username...' : 'Enter your name...';
+  };
+
+  // ─── SHOW MESSAGE ───
+  function showMsg(text, type) {
+    const el = document.getElementById('form-msg');
+    el.className = `form-msg ${type}`;
+    el.innerHTML = type === 'loading'
+      ? `<span class="spinner"></span>${text}`
+      : `${text}`;
+  }
+
+  // ─── LOGIN HANDLER ───
+  window.handleLogin = async function() {
+    const name = document.getElementById('input-name').value.trim();
+    const password = document.getElementById('input-password').value;
+
+    if (!name || !password) {
+      showMsg('ALL FIELDS REQUIRED', 'error');
+      return;
+    }
+
+    showMsg('AUTHENTICATING...', 'loading');
+    document.getElementById('login-btn').disabled = true;
+
+    try {
+      // For students: we convert their name to a pseudo-email for Firebase Auth
+      // For admin: direct email login
+      let email;
+      if (currentRole === 'student') {
+        // Lookup student by name in Firestore to get their email/uid
+        const nameKey = name.toLowerCase().replace(/\s+/g, '.');
+        email = `${nameKey}@ctf.student`;
+      } else {
+        email = `${name.toLowerCase()}@ctf.admin`;
+      }
+
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCred.user.uid;
+
+      // Verify role in Firestore
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (!userDoc.exists()) throw new Error('USER_NOT_FOUND');
+
+      const userData = userDoc.data();
+      if (userData.role !== currentRole) throw new Error('ROLE_MISMATCH');
+
+      showMsg('ACCESS GRANTED — REDIRECTING...', 'success');
+
+      setTimeout(() => {
+        if (currentRole === 'admin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'challenge.html';
+        }
+      }, 1000);
+
+    } catch (err) {
+      let msg = 'AUTHENTICATION FAILED';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        msg = 'INVALID CREDENTIALS — ACCESS DENIED';
+      } else if (err.message === 'ROLE_MISMATCH') {
+        msg = 'ROLE MISMATCH — UNAUTHORIZED';
+      } else if (err.message === 'USER_NOT_FOUND') {
+        msg = 'USER NOT FOUND IN SYSTEM';
+      }
+      showMsg(msg, 'error');
+      document.getElementById('login-btn').disabled = false;
+    }
+  };
+
+  // ─── ENTER KEY SUPPORT ───
+  document.getElementById('input-password').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') window.handleLogin();
+  });
+  document.getElementById('input-name').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('input-password').focus();
+  });
+</script>
+
+<script>
+// ─── LIVE CLOCK ───
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('live-time').textContent =
+    `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} · ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ─── PARTICLES ───
+const container = document.getElementById('particles');
+for (let i = 0; i < 20; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + 'vw';
+  p.style.setProperty('--dur', (8 + Math.random() * 12) + 's');
+  p.style.setProperty('--delay', (Math.random() * 10) + 's');
+  p.style.opacity = Math.random() * 0.3;
+  container.appendChild(p);
+}
+</script>
+
+</body>
+</html>

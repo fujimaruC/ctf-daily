@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF Admin — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #030912;
+  --bg2:      #060f1c;
+  --bg3:      #0a1628;
+  --accent:   #00c8ff;
+  --accent2:  #0055ff;
+  --green:    #00ff9d;
+  --orange:   #ff7b35;
+  --red:      #ff2d55;
+  --yellow:   #ffd060;
+  --purple:   #a855f7;
+  --text:     #b8d4ec;
+  --dim:      #3a5878;
+  --border:   rgba(0,180,255,0.12);
+  --panel:    rgba(0,140,255,0.04);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,180,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,180,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  pointer-events: none;
+}
+
+/* ─── STATUS BAR ─── */
+.status-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 36px;
+  background: rgba(3,9,18,0.97);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; z-index: 200;
+  backdrop-filter: blur(12px);
+}
+.status-left { display: flex; align-items: center; gap: 20px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+.status-label { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+.status-label span { color: var(--accent); }
+.status-right { display: flex; align-items: center; gap: 16px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); }
+#live-time { color: var(--accent); letter-spacing: 2px; }
+.logout-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--red); border: 1px solid rgba(255,45,85,0.3); padding: 3px 10px; cursor: pointer; background: rgba(255,45,85,0.05); transition: all 0.2s; }
+.logout-btn:hover { background: rgba(255,45,85,0.12); }
+
+/* ─── SIDEBAR ─── */
+.sidenav {
+  position: fixed; left: 0; top: 36px; bottom: 0; width: 240px;
+  background: rgba(3,9,18,0.97);
+  border-right: 1px solid var(--border);
+  z-index: 100; display: flex; flex-direction: column;
+  padding: 28px 0; backdrop-filter: blur(12px);
+}
+.sidenav-logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.logo-text { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; letter-spacing: 3px; color: var(--accent); display: block; }
+.logo-sub { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-top: 4px; display: block; }
+.admin-badge { margin: 0 24px 20px; padding: 10px 14px; border: 1px solid rgba(168,85,247,0.3); background: rgba(168,85,247,0.05); }
+.admin-badge-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); margin-bottom: 4px; }
+.admin-badge-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: var(--purple); letter-spacing: 1px; }
+.nav-section-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); padding: 8px 24px 4px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 24px; text-decoration: none; color: var(--dim); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; transition: all 0.2s; cursor: pointer; border-left: 2px solid transparent; }
+.nav-item:hover { color: var(--text); border-left-color: rgba(0,200,255,0.3); background: rgba(0,180,255,0.03); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,200,255,0.05); }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.nav-item a { color: inherit; text-decoration: none; }
+
+/* ─── MAIN ─── */
+.main { margin-left: 240px; padding-top: 36px; min-height: 100vh; position: relative; z-index: 1; }
+
+/* ─── SECTIONS ─── */
+.section { padding: 52px; border-bottom: 1px solid var(--border); }
+.section:last-child { border-bottom: none; }
+.sec-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+.sec-num { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 2px; opacity: 0.6; }
+.sec-title { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; letter-spacing: 4px; color: var(--text); }
+.sec-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ─── HERO ─── */
+.hero {
+  padding: 52px 52px 44px;
+  background: radial-gradient(ellipse at 80% 0%, rgba(168,85,247,0.06) 0%, transparent 60%);
+  border-bottom: 1px solid var(--border);
+}
+.hero-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 5px; color: var(--purple); opacity: 0.8; margin-bottom: 12px; display: block; }
+.hero-title { font-family: 'Orbitron', monospace; font-size: clamp(24px, 3vw, 40px); font-weight: 900; letter-spacing: 5px; background: linear-gradient(135deg, #fff 0%, var(--purple) 60%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+.hero-sub { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+
+/* ─── STAT CARDS ─── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.stat-card { background: var(--panel); border: 1px solid var(--border); padding: 24px 20px; position: relative; transition: border-color 0.2s; }
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.stat-card.cyan::before { background: var(--accent); }
+.stat-card.green::before { background: var(--green); }
+.stat-card.orange::before { background: var(--orange); }
+.stat-card.purple::before { background: var(--purple); }
+.stat-card.red::before { background: var(--red); }
+.stat-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); margin-bottom: 10px; }
+.stat-value { font-family: 'Orbitron', monospace; font-size: 36px; font-weight: 900; line-height: 1; }
+.stat-card.cyan .stat-value { color: var(--accent); text-shadow: 0 0 20px rgba(0,200,255,0.3); }
+.stat-card.green .stat-value { color: var(--green); text-shadow: 0 0 20px rgba(0,255,157,0.3); }
+.stat-card.orange .stat-value { color: var(--orange); text-shadow: 0 0 20px rgba(255,123,53,0.3); }
+.stat-card.purple .stat-value { color: var(--purple); text-shadow: 0 0 20px rgba(168,85,247,0.3); }
+.stat-card.red .stat-value { color: var(--red); text-shadow: 0 0 20px rgba(255,45,85,0.3); }
+.stat-sub { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--dim); margin-top: 8px; }
+
+/* ─── ACTIVE CHALLENGE CARD ─── */
+.active-challenge-card {
+  background: rgba(6,15,28,0.8);
+  border: 1px solid var(--border);
+  padding: 28px 32px;
+  position: relative;
+}
+.active-challenge-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.5; }
+.active-challenge-card.active-glow { border-color: rgba(0,255,157,0.3); box-shadow: 0 0 30px rgba(0,255,157,0.05); }
+.active-challenge-card.active-glow::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+.challenge-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.challenge-card-title { font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 700; letter-spacing: 3px; color: var(--text); }
+.challenge-card-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.badge { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 4px 12px; border: 1px solid; }
+.badge-easy { border-color: rgba(0,255,157,0.4); color: var(--green); background: rgba(0,255,157,0.06); }
+.badge-medium { border-color: rgba(255,208,96,0.4); color: var(--yellow); background: rgba(255,208,96,0.06); }
+.badge-hard { border-color: rgba(255,45,85,0.4); color: var(--red); background: rgba(255,45,85,0.06); }
+.badge-cat { border-color: rgba(0,200,255,0.3); color: var(--accent); background: rgba(0,200,255,0.05); }
+.badge-active { border-color: rgba(0,255,157,0.4); color: var(--green); background: rgba(0,255,157,0.08); }
+.badge-inactive { border-color: rgba(58,88,120,0.4); color: var(--dim); background: transparent; }
+.challenge-desc-preview { font-size: 15px; color: var(--dim); line-height: 1.7; margin-bottom: 20px; max-width: 700px; }
+.challenge-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.action-btn { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; padding: 10px 20px; border: 1px solid; cursor: pointer; transition: all 0.2s; background: transparent; }
+.action-btn.green { border-color: rgba(0,255,157,0.4); color: var(--green); }
+.action-btn.green:hover { background: rgba(0,255,157,0.08); box-shadow: 0 0 12px rgba(0,255,157,0.1); }
+.action-btn.red { border-color: rgba(255,45,85,0.4); color: var(--red); }
+.action-btn.red:hover { background: rgba(255,45,85,0.08); }
+.action-btn.accent { border-color: rgba(0,200,255,0.4); color: var(--accent); }
+.action-btn.accent:hover { background: rgba(0,200,255,0.07); }
+.action-btn.orange { border-color: rgba(255,123,53,0.4); color: var(--orange); }
+.action-btn.orange:hover { background: rgba(255,123,53,0.07); }
+
+/* ─── ATTENDANCE TABLE ─── */
+.attendance-filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+.filter-input {
+  background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+  color: var(--text); font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; padding: 8px 14px; outline: none;
+  transition: border-color 0.2s; letter-spacing: 1px;
+}
+.filter-input:focus { border-color: rgba(0,200,255,0.4); }
+.filter-input::placeholder { color: var(--dim); font-size: 11px; }
+.filter-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 8px 16px; border: 1px solid var(--border); color: var(--dim); cursor: pointer; background: transparent; transition: all 0.2s; }
+.filter-btn.active, .filter-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.05); }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--dim); text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table td { font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 13px 16px; border-bottom: 1px solid rgba(0,180,255,0.05); color: var(--text); letter-spacing: 1px; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(0,180,255,0.02); }
+.done-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); margin-right: 8px; }
+.pending-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--orange); margin-right: 8px; }
+.table-wrapper { border: 1px solid var(--border); overflow-x: auto; }
+.table-empty { text-align: center; padding: 40px; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+
+/* ─── PROGRESS BAR ─── */
+.progress-bar-wrap { background: rgba(0,0,0,0.3); height: 4px; border-radius: 0; flex: 1; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--green); transition: width 0.8s ease; box-shadow: 0 0 8px rgba(0,255,157,0.4); }
+
+/* ─── FORM MSG ─── */
+.form-msg { margin-top: 14px; padding: 12px 16px; font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 1px; display: none; }
+.form-msg.error { display: block; border: 1px solid rgba(255,45,85,0.3); color: var(--red); background: rgba(255,45,85,0.05); }
+.form-msg.success { display: block; border: 1px solid rgba(0,255,157,0.3); color: var(--green); background: rgba(0,255,157,0.05); }
+.form-msg.loading { display: block; border: 1px solid rgba(0,200,255,0.2); color: var(--accent); background: rgba(0,200,255,0.04); }
+
+/* ─── SPINNER ─── */
+.spinner { display: inline-block; width: 12px; height: 12px; border: 1px solid rgba(0,200,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+
+/* ─── PAGE LOADER ─── */
+.page-loader { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; transition: opacity 0.4s; }
+.page-loader.hidden { opacity: 0; pointer-events: none; }
+.loader-text { font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 4px; color: var(--accent); animation: pulse 1.5s infinite; }
+.loader-bar { width: 200px; height: 2px; background: var(--border); position: relative; overflow: hidden; }
+.loader-bar::after { content: ''; position: absolute; left: -40%; top: 0; bottom: 0; width: 40%; background: var(--accent); animation: loadSlide 1s ease infinite; }
+
+/* ─── CORNER DECO ─── */
+.corner { position: fixed; width: 50px; height: 50px; z-index: 2; pointer-events: none; }
+.corner-tl { top: 44px; left: 250px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.2; }
+.corner-tr { top: 44px; right: 16px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.2; }
+.corner-bl { bottom: 16px; left: 250px; border-bottom: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.2; }
+.corner-br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.2; }
+
+/* ─── ANIMATIONS ─── */
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes fadeInUp { from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)} }
+@keyframes loadSlide { from{left:-40%}to{left:100%} }
+.anim-in { animation: fadeInUp 0.5s ease both; }
+</style>
+</head>
+<body>
+
+<!-- Page Loader -->
+<div class="page-loader" id="page-loader">
+  <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:900;letter-spacing:6px;color:var(--purple)">ADMIN PANEL</div>
+  <div class="loader-bar"></div>
+  <div class="loader-text">INITIALIZING COMMAND CENTER...</div>
+</div>
+
+<!-- Corner Deco -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-left">
+    <div class="status-dot"></div>
+    <span class="status-label">ADMIN <span>CONSOLE</span></span>
+    <span class="status-label">CTF-PLATFORM <span>v1.0</span></span>
+  </div>
+  <div class="status-right">
+    <span id="live-time"></span>
+    <div class="logout-btn" onclick="handleLogout()">◈ LOGOUT</div>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidenav">
+  <div class="sidenav-logo">
+    <span class="logo-text">CTF DAILY</span>
+    <span class="logo-sub">ADMIN COMMAND CENTER</span>
+  </div>
+
+  <div class="admin-badge">
+    <div class="admin-badge-label">LOGGED IN AS</div>
+    <div class="admin-badge-name" id="admin-name">ADMIN</div>
+  </div>
+
+  <div class="nav-section-label">DASHBOARD</div>
+  <div class="nav-item active" onclick="setActiveNav(this)" data-section="overview">
+    <span class="nav-dot"></span> OVERVIEW
+  </div>
+  <div class="nav-item" onclick="setActiveNav(this)" data-section="attendance">
+    <span class="nav-dot"></span> ATTENDANCE
+  </div>
+  <div class="nav-item" onclick="setActiveNav(this)" data-section="challenge">
+    <span class="nav-dot"></span> TODAY'S CHALLENGE
+  </div>
+
+  <div class="nav-section-label" style="margin-top:12px;">MANAGEMENT</div>
+  <div class="nav-item" onclick="window.location.href='admin-challenges.html'">
+    <span class="nav-dot"></span> MANAGE CHALLENGES
+  </div>
+  <div class="nav-item" onclick="window.location.href='admin-students.html'">
+    <span class="nav-dot"></span> MANAGE STUDENTS
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main" id="main-content" style="display:none;">
+
+  <!-- ══════ HERO ══════ -->
+  <div class="hero">
+    <span class="hero-label">COMMAND CENTER — <span id="today-date"></span></span>
+    <div class="hero-title">ADMIN DASHBOARD</div>
+    <div class="hero-sub">MONITOR · CONTROL · REPORT</div>
+  </div>
+
+  <!-- ══════ SECTION 01: OVERVIEW ══════ -->
+  <section class="section anim-in" id="section-overview">
+    <div class="sec-header">
+      <span class="sec-num">01</span>
+      <span class="sec-title">SYSTEM OVERVIEW</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card cyan">
+        <div class="stat-label">TOTAL STUDENTS</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub">REGISTERED IN SYSTEM</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">ABSEN TODAY</div>
+        <div class="stat-value" id="stat-absen">—</div>
+        <div class="stat-sub">CHALLENGE COMPLETED</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">PENDING</div>
+        <div class="stat-value" id="stat-pending">—</div>
+        <div class="stat-sub">NOT YET SUBMITTED</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">COMPLETION RATE</div>
+        <div class="stat-value" id="stat-rate">—</div>
+        <div class="stat-sub">TODAY'S PARTICIPATION</div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div style="margin-top:24px;background:rgba(6,15,28,0.7);border:1px solid var(--border);padding:20px 24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--dim);">TODAY'S PARTICIPATION PROGRESS</span>
+        <span style="font-family:'Orbitron',monospace;font-size:13px;color:var(--green);" id="progress-label">0 / 0</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 02: ATTENDANCE ══════ -->
+  <section class="section anim-in" id="section-attendance">
+    <div class="sec-header">
+      <span class="sec-num">02</span>
+      <span class="sec-title">ATTENDANCE MONITOR</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <div class="attendance-filters">
+      <input type="date" class="filter-input" id="filter-date" />
+      <input type="text" class="filter-input" id="filter-search" placeholder="Search student name..." style="min-width:220px;" />
+      <div class="filter-btn active" onclick="setFilter('all',this)">ALL</div>
+      <div class="filter-btn" onclick="setFilter('done',this)">ABSEN ✓</div>
+      <div class="filter-btn" onclick="setFilter('pending',this)">PENDING</div>
+      <button class="action-btn accent" onclick="loadAttendance()" style="padding:8px 16px;font-size:10px;">↻ REFRESH</button>
+      <button class="action-btn green" onclick="exportCSV()" style="padding:8px 16px;font-size:10px;">↓ EXPORT CSV</button>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>STUDENT NAME</th>
+            <th>STATUS</th>
+            <th>SOLVED AT</th>
+            <th>ATTEMPTS</th>
+          </tr>
+        </thead>
+        <tbody id="attendance-body">
+          <tr><td colspan="5" class="table-empty">LOADING DATA...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="form-msg" id="attendance-msg"></div>
+  </section>
+
+  <!-- ══════ SECTION 03: TODAY'S CHALLENGE ══════ -->
+  <section class="section anim-in" id="section-challenge">
+    <div class="sec-header">
+      <span class="sec-num">03</span>
+      <span class="sec-title">TODAY'S CHALLENGE</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <div id="challenge-display">
+      <!-- injected by JS -->
+    </div>
+    <div class="form-msg" id="challenge-msg"></div>
+  </section>
+
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, collection,
+    query, where, getDocs, updateDoc, orderBy
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCDB4kvtHeCGJco1inelv-WRk09Xyuz5oY",
+  authDomain: "ctf-smk.firebaseapp.com",
+  projectId: "ctf-smk",
+  storageBucket: "ctf-smk.firebasestorage.app",
+  messagingSenderId: "983856640913",
+  appId: "1:983856640913:web:3d584d18c802885020a030"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let allStudents = [];
+  let attendanceData = [];
+  let currentFilter = 'all';
+  let currentChallenge = null;
+
+  // ─── AUTH GUARD ───
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') { window.location.href = 'index.html'; return; }
+    document.getElementById('admin-name').textContent = userDoc.data().name?.toUpperCase() || 'ADMIN';
+    await Promise.all([loadStudents(), loadTodayChallenge(), loadAttendance()]);
+    document.getElementById('page-loader').classList.add('hidden');
+    document.getElementById('main-content').style.display = 'block';
+  });
+
+  // ─── LOAD STUDENTS ───
+  async function loadStudents() {
+    const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+    allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    document.getElementById('stat-total').textContent = allStudents.length;
+  }
+
+  // ─── LOAD TODAY'S CHALLENGE ───
+  async function loadTodayChallenge() {
+    const today = getToday();
+    const q = query(collection(db, 'challenges'), where('date', '==', today));
+    const snap = await getDocs(q);
+
+    const display = document.getElementById('challenge-display');
+
+    if (snap.empty) {
+      display.innerHTML = `
+        <div style="text-align:center;padding:60px 40px;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--dim);margin-bottom:16px;">NO CHALLENGE SCHEDULED FOR TODAY</div>
+          <button class="action-btn accent" onclick="window.location.href='admin-challenges.html'" style="font-size:12px;padding:12px 24px;">◈ GO TO CHALLENGE MANAGER</button>
+        </div>`;
+      return;
+    }
+
+    const data = snap.docs[0].data();
+    currentChallenge = { id: snap.docs[0].id, ...data };
+    const isActive = data.active === true;
+    const diffClass = { easy: 'badge-easy', medium: 'badge-medium', hard: 'badge-hard' }[data.difficulty] || 'badge-cat';
+
+    display.innerHTML = `
+      <div class="active-challenge-card ${isActive ? 'active-glow' : ''}">
+        <div class="challenge-card-header">
+          <div class="challenge-card-title">${data.title}</div>
+          <div class="challenge-card-meta">
+            <span class="badge ${diffClass}">${(data.difficulty || 'UNKNOWN').toUpperCase()}</span>
+            <span class="badge badge-cat">${(data.category || 'GENERAL').toUpperCase()}</span>
+            <span class="badge ${isActive ? 'badge-active' : 'badge-inactive'}">${isActive ? '● ACTIVE' : '○ INACTIVE'}</span>
+          </div>
+        </div>
+        <div class="challenge-desc-preview">${(data.description || '').substring(0, 200)}${data.description?.length > 200 ? '...' : ''}</div>
+        <div class="challenge-actions">
+          ${isActive
+            ? `<button class="action-btn red" onclick="toggleChallenge('${snap.docs[0].id}', false)">◈ DEACTIVATE</button>`
+            : `<button class="action-btn green" onclick="toggleChallenge('${snap.docs[0].id}', true)">◈ ACTIVATE</button>`
+          }
+          <button class="action-btn accent" onclick="window.location.href='admin-challenges.html'">✎ MANAGE</button>
+        </div>
+      </div>`;
+  }
+
+  // ─── TOGGLE CHALLENGE ───
+  window.toggleChallenge = async function(id, activate) {
+    const msg = document.getElementById('challenge-msg');
+    msg.className = 'form-msg loading'; msg.style.display = 'block';
+    msg.innerHTML = `<span class="spinner"></span>${activate ? 'ACTIVATING' : 'DEACTIVATING'} CHALLENGE...`;
+    try {
+      await updateDoc(doc(db, 'challenges', id), { active: activate });
+      msg.className = 'form-msg success';
+      msg.innerHTML = `CHALLENGE ${activate ? 'ACTIVATED' : 'DEACTIVATED'} SUCCESSFULLY`;
+      await loadTodayChallenge();
+    } catch (e) {
+      msg.className = 'form-msg error';
+      msg.innerHTML = 'ERROR — PLEASE TRY AGAIN';
+    }
+  };
+
+  // ─── LOAD ATTENDANCE ───
+  window.loadAttendance = async function() {
+    const dateVal = document.getElementById('filter-date').value || getToday();
+    const q = query(collection(db, 'attendance'), where('date', '==', dateVal), where('correct', '==', true));
+    const snap = await getDocs(q);
+
+    // Map uid → solve data
+    const solveMap = {};
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!solveMap[data.uid]) solveMap[data.uid] = data;
+    });
+
+    // Count attempts per student
+    const attQ = query(collection(db, 'attendance'), where('date', '==', dateVal));
+    const attSnap = await getDocs(attQ);
+    const attemptMap = {};
+    attSnap.docs.forEach(d => {
+      const uid = d.data().uid;
+      attemptMap[uid] = (attemptMap[uid] || 0) + 1;
+    });
+
+    attendanceData = allStudents.map(s => ({
+      ...s,
+      solved: !!solveMap[s.id],
+      solvedAt: solveMap[s.id]?.solvedAt?.toDate() || null,
+      attempts: attemptMap[s.id] || 0
+    }));
+
+    // Stats
+    const absenCount = attendanceData.filter(s => s.solved).length;
+    const total = allStudents.length;
+    const rate = total > 0 ? Math.round((absenCount / total) * 100) : 0;
+    document.getElementById('stat-absen').textContent = absenCount;
+    document.getElementById('stat-pending').textContent = total - absenCount;
+    document.getElementById('stat-rate').textContent = rate + '%';
+    document.getElementById('progress-label').textContent = `${absenCount} / ${total}`;
+    document.getElementById('progress-bar').style.width = rate + '%';
+
+    renderTable();
+  };
+
+  // ─── RENDER TABLE ───
+  function renderTable() {
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    let data = attendanceData;
+    if (currentFilter === 'done') data = data.filter(s => s.solved);
+    if (currentFilter === 'pending') data = data.filter(s => !s.solved);
+    if (search) data = data.filter(s => s.name?.toLowerCase().includes(search));
+
+    const tbody = document.getElementById('attendance-body');
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="table-empty">NO DATA FOUND</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map((s, i) => {
+      const timeStr = s.solvedAt ? s.solvedAt.toLocaleTimeString() : '—';
+      const status = s.solved
+        ? `<span class="done-dot"></span><span style="color:var(--green)">ABSEN</span>`
+        : `<span class="pending-dot"></span><span style="color:var(--orange)">PENDING</span>`;
+      return `<tr>
+        <td style="color:var(--dim)">${i + 1}</td>
+        <td style="color:var(--text);font-weight:600;">${s.name?.toUpperCase() || '—'}</td>
+        <td>${status}</td>
+        <td>${timeStr}</td>
+        <td style="color:var(--dim)">${s.attempts || 0}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ─── FILTERS ───
+  window.setFilter = function(f, el) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderTable();
+  };
+
+  document.getElementById('filter-search').addEventListener('input', renderTable);
+  document.getElementById('filter-date').addEventListener('change', () => window.loadAttendance());
+
+  // ─── EXPORT CSV ───
+  window.exportCSV = function() {
+    const dateVal = document.getElementById('filter-date').value || getToday();
+    const rows = [['#','NAME','STATUS','SOLVED AT','ATTEMPTS']];
+    attendanceData.forEach((s, i) => {
+      rows.push([
+        i + 1,
+        s.name?.toUpperCase() || '—',
+        s.solved ? 'ABSEN' : 'PENDING',
+        s.solvedAt ? s.solvedAt.toLocaleTimeString() : '—',
+        s.attempts
+      ]);
+    });
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `attendance_${dateVal}.csv`;
+    a.click();
+  };
+
+  // ─── NAV ───
+  window.setActiveNav = function(el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    const section = el.dataset.section;
+    document.getElementById(`section-${section}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // ─── LOGOUT ───
+  window.handleLogout = async function() {
+    await signOut(auth);
+    window.location.href = 'index.html';
+  };
+
+  // ─── HELPERS ───
+  function getToday() {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  // Set default date filter
+  document.getElementById('filter-date').value = getToday();
+</script>
+
+<script>
+// ─── LIVE CLOCK ───
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('live-time').textContent =
+    `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} · ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ─── DATE LABEL ───
+const now = new Date();
+const pad = n => String(n).padStart(2, '0');
+document.getElementById('today-date').textContent = `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())}`;
+</script>
+
+</body>
+</html>

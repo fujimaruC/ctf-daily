@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF Admin — Student Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #030912;
+  --bg2:      #060f1c;
+  --bg3:      #0a1628;
+  --accent:   #00c8ff;
+  --accent2:  #0055ff;
+  --green:    #00ff9d;
+  --orange:   #ff7b35;
+  --red:      #ff2d55;
+  --yellow:   #ffd060;
+  --purple:   #a855f7;
+  --text:     #b8d4ec;
+  --dim:      #3a5878;
+  --border:   rgba(0,180,255,0.12);
+  --panel:    rgba(0,140,255,0.04);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Rajdhani', sans-serif; font-size: 18px;
+  line-height: 1.6; overflow-x: hidden; min-height: 100vh;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0;
+  background-image: linear-gradient(rgba(0,180,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,180,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px; pointer-events: none;
+}
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  pointer-events: none;
+}
+
+/* ─── STATUS BAR ─── */
+.status-bar { position: fixed; top: 0; left: 0; right: 0; height: 36px; background: rgba(3,9,18,0.97); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; z-index: 200; backdrop-filter: blur(12px); }
+.status-left { display: flex; align-items: center; gap: 20px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+.status-label { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+.status-label span { color: var(--accent); }
+.status-right { display: flex; align-items: center; gap: 16px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); }
+#live-time { color: var(--accent); letter-spacing: 2px; }
+.logout-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--red); border: 1px solid rgba(255,45,85,0.3); padding: 3px 10px; cursor: pointer; background: rgba(255,45,85,0.05); transition: all 0.2s; }
+.logout-btn:hover { background: rgba(255,45,85,0.12); }
+
+/* ─── SIDEBAR ─── */
+.sidenav { position: fixed; left: 0; top: 36px; bottom: 0; width: 240px; background: rgba(3,9,18,0.97); border-right: 1px solid var(--border); z-index: 100; display: flex; flex-direction: column; padding: 28px 0; backdrop-filter: blur(12px); }
+.sidenav-logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.logo-text { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; letter-spacing: 3px; color: var(--accent); display: block; }
+.logo-sub { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-top: 4px; display: block; }
+.admin-badge { margin: 0 24px 20px; padding: 10px 14px; border: 1px solid rgba(168,85,247,0.3); background: rgba(168,85,247,0.05); }
+.admin-badge-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); margin-bottom: 4px; }
+.admin-badge-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: var(--purple); letter-spacing: 1px; }
+.nav-section-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); padding: 8px 24px 4px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 24px; color: var(--dim); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; transition: all 0.2s; cursor: pointer; border-left: 2px solid transparent; text-decoration: none; }
+.nav-item:hover { color: var(--text); border-left-color: rgba(0,200,255,0.3); background: rgba(0,180,255,0.03); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,200,255,0.05); }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* ─── MAIN ─── */
+.main { margin-left: 240px; padding-top: 36px; min-height: 100vh; position: relative; z-index: 1; }
+.section { padding: 52px; border-bottom: 1px solid var(--border); }
+.section:last-child { border-bottom: none; }
+.sec-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+.sec-num { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 2px; opacity: 0.6; }
+.sec-title { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; letter-spacing: 4px; color: var(--text); }
+.sec-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ─── HERO ─── */
+.hero { padding: 52px 52px 44px; background: radial-gradient(ellipse at 80% 0%, rgba(0,200,255,0.06) 0%, transparent 60%); border-bottom: 1px solid var(--border); }
+.hero-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 5px; color: var(--accent); opacity: 0.8; margin-bottom: 12px; display: block; }
+.hero-title { font-family: 'Orbitron', monospace; font-size: clamp(24px, 3vw, 40px); font-weight: 900; letter-spacing: 5px; background: linear-gradient(135deg, #fff 0%, var(--accent) 60%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+.hero-sub { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+
+/* ─── STAT CARDS ─── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 0; }
+.stat-card { background: var(--panel); border: 1px solid var(--border); padding: 22px 20px; position: relative; }
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.stat-card.cyan::before { background: var(--accent); }
+.stat-card.green::before { background: var(--green); }
+.stat-card.purple::before { background: var(--purple); }
+.stat-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--dim); margin-bottom: 10px; }
+.stat-value { font-family: 'Orbitron', monospace; font-size: 32px; font-weight: 900; line-height: 1; }
+.stat-card.cyan .stat-value { color: var(--accent); text-shadow: 0 0 20px rgba(0,200,255,0.3); }
+.stat-card.green .stat-value { color: var(--green); text-shadow: 0 0 20px rgba(0,255,157,0.3); }
+.stat-card.purple .stat-value { color: var(--purple); text-shadow: 0 0 20px rgba(168,85,247,0.3); }
+.stat-sub { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--dim); margin-top: 8px; }
+
+/* ─── FORM ─── */
+.create-form { background: rgba(6,15,28,0.8); border: 1px solid var(--border); padding: 36px; position: relative; }
+.create-form::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.5; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--dim); text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.form-label-num { color: var(--accent); opacity: 0.7; }
+.form-input, .form-select {
+  background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+  color: var(--text); font-family: 'Share Tech Mono', monospace;
+  font-size: 14px; padding: 12px 16px; outline: none;
+  transition: all 0.2s; letter-spacing: 1px; width: 100%;
+}
+.form-input::placeholder { color: var(--dim); opacity: 0.45; font-size: 12px; }
+.form-input:focus, .form-select:focus { border-color: rgba(0,200,255,0.4); box-shadow: 0 0 0 1px rgba(0,200,255,0.08); background: rgba(0,20,40,0.4); }
+.form-select option { background: var(--bg2); color: var(--text); }
+
+/* Password strength */
+.pw-strength { display: flex; gap: 4px; margin-top: 6px; }
+.pw-bar { flex: 1; height: 3px; background: var(--border); border-radius: 0; transition: background 0.3s; }
+.pw-bar.weak { background: var(--red); }
+.pw-bar.medium { background: var(--yellow); }
+.pw-bar.strong { background: var(--green); }
+.pw-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-top: 4px; }
+
+/* Bulk import */
+.bulk-area { background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 13px; padding: 16px; outline: none; transition: border-color 0.2s; width: 100%; min-height: 140px; resize: vertical; line-height: 1.8; letter-spacing: 1px; }
+.bulk-area:focus { border-color: rgba(0,200,255,0.4); }
+.bulk-area::placeholder { color: var(--dim); opacity: 0.4; font-size: 12px; }
+
+.form-submit-row { display: flex; gap: 12px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+.submit-btn { font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 3px; padding: 13px 28px; border: 1px solid; cursor: pointer; background: transparent; transition: all 0.25s; }
+.submit-btn.accent { border-color: var(--accent); color: var(--accent); }
+.submit-btn.accent:hover { background: rgba(0,200,255,0.07); box-shadow: 0 0 20px rgba(0,200,255,0.15); }
+.submit-btn.green { border-color: var(--green); color: var(--green); }
+.submit-btn.green:hover { background: rgba(0,255,157,0.07); box-shadow: 0 0 20px rgba(0,255,157,0.15); }
+.submit-btn.red-btn { border-color: var(--red); color: var(--red); }
+.submit-btn.red-btn:hover { background: rgba(255,45,85,0.07); }
+.submit-btn.orange { border-color: var(--orange); color: var(--orange); }
+.submit-btn.orange:hover { background: rgba(255,123,53,0.07); }
+
+/* Tabs */
+.form-tabs { display: flex; gap: 0; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+.form-tab { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; padding: 10px 20px; cursor: pointer; color: var(--dim); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+.form-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.form-tab:hover { color: var(--text); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─── STUDENT TABLE ─── */
+.list-controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+.filter-input { background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 8px 14px; outline: none; transition: border-color 0.2s; letter-spacing: 1px; }
+.filter-input:focus { border-color: rgba(0,200,255,0.4); }
+.filter-input::placeholder { color: var(--dim); font-size: 11px; }
+.table-wrapper { border: 1px solid var(--border); overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--dim); text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table td { font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 13px 16px; border-bottom: 1px solid rgba(0,180,255,0.05); color: var(--text); letter-spacing: 1px; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(0,180,255,0.02); }
+.action-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 5px 12px; border: 1px solid; cursor: pointer; transition: all 0.2s; background: transparent; white-space: nowrap; }
+.action-btn.accent { border-color: rgba(0,200,255,0.3); color: var(--accent); }
+.action-btn.accent:hover { background: rgba(0,200,255,0.07); }
+.action-btn.red { border-color: rgba(255,45,85,0.3); color: var(--red); }
+.action-btn.red:hover { background: rgba(255,45,85,0.07); }
+.action-btn.orange { border-color: rgba(255,123,53,0.3); color: var(--orange); }
+.action-btn.orange:hover { background: rgba(255,123,53,0.07); }
+.table-empty { text-align: center; padding: 40px; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--dim); }
+
+/* ─── ATTENDANCE HISTORY PANEL ─── */
+.history-panel { background: rgba(6,15,28,0.8); border: 1px solid var(--border); padding: 28px; margin-top: 16px; display: none; position: relative; }
+.history-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--purple), transparent); opacity: 0.5; }
+.history-panel.open { display: block; }
+.history-panel-title { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; letter-spacing: 3px; color: var(--purple); margin-bottom: 16px; }
+
+/* ─── MODAL ─── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(3,9,18,0.88); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--bg2); border: 1px solid var(--border); padding: 36px; width: 100%; max-width: 480px; position: relative; animation: fadeInUp 0.3s ease; }
+.modal::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; }
+.modal.delete-modal::before { background: linear-gradient(90deg, transparent, var(--red), transparent); opacity: 0.6; }
+.modal.pw-modal::before { background: linear-gradient(90deg, transparent, var(--orange), transparent); opacity: 0.6; }
+.modal-title { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; letter-spacing: 3px; margin-bottom: 12px; }
+.modal.delete-modal .modal-title { color: var(--red); }
+.modal.pw-modal .modal-title { color: var(--orange); }
+.modal-sub { font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 1px; color: var(--dim); margin-bottom: 24px; line-height: 1.7; }
+.modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+.modal-input { background: rgba(0,0,0,0.4); border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 14px; padding: 12px 16px; outline: none; width: 100%; letter-spacing: 1px; transition: border-color 0.2s; }
+.modal-input:focus { border-color: rgba(255,123,53,0.4); }
+.modal-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--dim); margin-bottom: 8px; display: block; }
+
+/* ─── FORM MSG ─── */
+.form-msg { margin-top: 14px; padding: 12px 16px; font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 1px; display: none; }
+.form-msg.error { display: block; border: 1px solid rgba(255,45,85,0.3); color: var(--red); background: rgba(255,45,85,0.05); }
+.form-msg.success { display: block; border: 1px solid rgba(0,255,157,0.3); color: var(--green); background: rgba(0,255,157,0.05); }
+.form-msg.loading { display: block; border: 1px solid rgba(0,200,255,0.2); color: var(--accent); background: rgba(0,200,255,0.04); }
+.form-msg.warning { display: block; border: 1px solid rgba(255,208,96,0.3); color: var(--yellow); background: rgba(255,208,96,0.04); }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 1px solid rgba(0,200,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+
+/* ─── PAGE LOADER ─── */
+.page-loader { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; transition: opacity 0.4s; }
+.page-loader.hidden { opacity: 0; pointer-events: none; }
+.loader-text { font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 4px; color: var(--accent); animation: pulse 1.5s infinite; }
+.loader-bar { width: 200px; height: 2px; background: var(--border); position: relative; overflow: hidden; }
+.loader-bar::after { content: ''; position: absolute; left: -40%; top: 0; bottom: 0; width: 40%; background: var(--accent); animation: loadSlide 1s ease infinite; }
+
+/* ─── CORNER ─── */
+.corner { position: fixed; width: 50px; height: 50px; z-index: 2; pointer-events: none; }
+.corner-tl { top: 44px; left: 250px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.2; }
+.corner-tr { top: 44px; right: 16px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.2; }
+.corner-bl { bottom: 16px; left: 250px; border-bottom: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.2; }
+.corner-br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.2; }
+
+/* ─── EMPTY STATE ─── */
+.empty-state { text-align: center; padding: 50px 40px; }
+.empty-title { font-family: 'Orbitron', monospace; font-size: 13px; letter-spacing: 4px; color: var(--dim); margin-bottom: 8px; }
+.empty-sub { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; color: var(--dim); opacity: 0.6; }
+
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes fadeInUp { from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)} }
+@keyframes loadSlide { from{left:-40%}to{left:100%} }
+.anim-in { animation: fadeInUp 0.5s ease both; }
+</style>
+</head>
+<body>
+
+<!-- Page Loader -->
+<div class="page-loader" id="page-loader">
+  <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:900;letter-spacing:6px;color:var(--accent)">STUDENT MGR</div>
+  <div class="loader-bar"></div>
+  <div class="loader-text">LOADING STUDENT DATABASE...</div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal delete-modal">
+    <div class="modal-title">◈ CONFIRM DELETE</div>
+    <div class="modal-sub" id="delete-modal-text">Delete this student? All their attendance records will remain but login access will be removed.</div>
+    <div class="modal-actions">
+      <button class="submit-btn red-btn" onclick="confirmDelete()">DELETE STUDENT</button>
+      <button class="submit-btn accent" onclick="closeModals()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="pw-modal">
+  <div class="modal pw-modal">
+    <div class="modal-title">◈ RESET PASSWORD</div>
+    <div class="modal-sub" id="pw-modal-sub">Set a new password for this student.</div>
+    <span class="modal-label">NEW PASSWORD</span>
+    <input type="password" class="modal-input" id="new-pw-input" placeholder="Enter new password..." />
+    <div class="pw-strength" style="margin-top:8px;">
+      <div class="pw-bar" id="mpb1"></div>
+      <div class="pw-bar" id="mpb2"></div>
+      <div class="pw-bar" id="mpb3"></div>
+      <div class="pw-bar" id="mpb4"></div>
+    </div>
+    <div class="pw-label" id="mpw-label">ENTER PASSWORD</div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="submit-btn orange" onclick="confirmResetPw()">RESET PASSWORD</button>
+      <button class="submit-btn accent" onclick="closeModals()">CANCEL</button>
+    </div>
+    <div class="form-msg" id="pw-modal-msg"></div>
+  </div>
+</div>
+
+<!-- Corner Deco -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-left">
+    <div class="status-dot"></div>
+    <span class="status-label">STUDENT <span>MANAGER</span></span>
+    <span class="status-label">CTF-PLATFORM <span>v1.0</span></span>
+  </div>
+  <div class="status-right">
+    <span id="live-time"></span>
+    <div class="logout-btn" onclick="handleLogout()">◈ LOGOUT</div>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidenav">
+  <div class="sidenav-logo">
+    <span class="logo-text">CTF DAILY</span>
+    <span class="logo-sub">ADMIN COMMAND CENTER</span>
+  </div>
+  <div class="admin-badge">
+    <div class="admin-badge-label">LOGGED IN AS</div>
+    <div class="admin-badge-name" id="admin-name">ADMIN</div>
+  </div>
+  <div class="nav-section-label">DASHBOARD</div>
+  <div class="nav-item" onclick="window.location.href='admin.html'">
+    <span class="nav-dot"></span> OVERVIEW
+  </div>
+  <div class="nav-section-label" style="margin-top:12px;">MANAGEMENT</div>
+  <div class="nav-item" onclick="window.location.href='admin-challenges.html'">
+    <span class="nav-dot"></span> MANAGE CHALLENGES
+  </div>
+  <div class="nav-item active">
+    <span class="nav-dot"></span> MANAGE STUDENTS
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main" id="main-content" style="display:none;">
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="hero-label">STUDENT ROSTER — CREATE · MANAGE · RESET</span>
+    <div class="hero-title">STUDENT MANAGER</div>
+    <div class="hero-sub">REGISTER STUDENTS AND MANAGE THEIR ACCESS</div>
+  </div>
+
+  <!-- ══════ SECTION 01: STATS ══════ -->
+  <section class="section anim-in">
+    <div class="sec-header">
+      <span class="sec-num">01</span>
+      <span class="sec-title">ROSTER OVERVIEW</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card cyan">
+        <div class="stat-label">TOTAL STUDENTS</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub">IN SYSTEM</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">ABSEN TODAY</div>
+        <div class="stat-value" id="stat-today">—</div>
+        <div class="stat-sub">COMPLETED TODAY</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">TOTAL SOLVES</div>
+        <div class="stat-value" id="stat-solves">—</div>
+        <div class="stat-sub">ALL TIME</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 02: CREATE STUDENT ══════ -->
+  <section class="section anim-in" id="section-create">
+    <div class="sec-header">
+      <span class="sec-num">02</span>
+      <span class="sec-title" id="form-section-title">REGISTER STUDENT</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="form-tabs">
+      <div class="form-tab active" onclick="switchTab('single', this)">◈ SINGLE STUDENT</div>
+      <div class="form-tab" onclick="switchTab('bulk', this)">◈ BULK IMPORT</div>
+    </div>
+
+    <!-- Single Student Tab -->
+    <div class="tab-panel active" id="tab-single">
+      <div class="create-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="form-label"><span class="form-label-num">01</span> FULL NAME</div>
+            <input type="text" class="form-input" id="f-name" placeholder="e.g. Budi Santoso" />
+          </div>
+          <div class="form-group">
+            <div class="form-label"><span class="form-label-num">02</span> CLASS / GROUP</div>
+            <input type="text" class="form-input" id="f-class" placeholder="e.g. XII RPL 1" />
+          </div>
+          <div class="form-group">
+            <div class="form-label"><span class="form-label-num">03</span> PASSWORD</div>
+            <input type="password" class="form-input" id="f-password" placeholder="Set initial password..." oninput="checkStrength('f-password','pb','pw-label-single')" />
+            <div class="pw-strength">
+              <div class="pw-bar" id="pb1"></div>
+              <div class="pw-bar" id="pb2"></div>
+              <div class="pw-bar" id="pb3"></div>
+              <div class="pw-bar" id="pb4"></div>
+            </div>
+            <div class="pw-label" id="pw-label-single">ENTER PASSWORD</div>
+          </div>
+          <div class="form-group">
+            <div class="form-label"><span class="form-label-num">04</span> CONFIRM PASSWORD</div>
+            <input type="password" class="form-input" id="f-password2" placeholder="Repeat password..." />
+          </div>
+        </div>
+        <div class="form-submit-row">
+          <button class="submit-btn green" onclick="createStudent()">◈ REGISTER STUDENT</button>
+          <button class="submit-btn accent" onclick="resetCreateForm()">↺ CLEAR</button>
+        </div>
+        <div class="form-msg" id="create-msg"></div>
+      </div>
+    </div>
+
+    <!-- Bulk Import Tab -->
+    <div class="tab-panel" id="tab-bulk">
+      <div class="create-form">
+        <div class="form-group" style="margin-bottom:20px;">
+          <div class="form-label"><span class="form-label-num">01</span> BULK STUDENT DATA</div>
+          <textarea class="bulk-area" id="bulk-input" placeholder="Paste one student per line in this format:&#10;Name, Class, Password&#10;&#10;Example:&#10;Budi Santoso, XII RPL 1, pass123&#10;Siti Rahayu, XII RPL 1, pass456&#10;Ahmad Fauzi, XII RPL 2, pass789"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <div class="form-label"><span class="form-label-num">02</span> DEFAULT PASSWORD (if not specified per row)</div>
+          <input type="text" class="form-input" id="bulk-default-pw" placeholder="e.g. ctf2024" style="max-width:320px;" />
+        </div>
+        <div class="form-submit-row">
+          <button class="submit-btn green" onclick="bulkImport()">◈ IMPORT ALL STUDENTS</button>
+          <button class="submit-btn accent" onclick="document.getElementById('bulk-input').value=''">↺ CLEAR</button>
+        </div>
+        <div class="form-msg" id="bulk-msg"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 03: STUDENT ROSTER ══════ -->
+  <section class="section anim-in" id="section-roster">
+    <div class="sec-header">
+      <span class="sec-num">03</span>
+      <span class="sec-title">STUDENT ROSTER</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <div class="list-controls">
+      <input type="text" class="filter-input" id="roster-search" placeholder="Search by name or class..." style="min-width:240px;" oninput="renderRoster()" />
+      <button class="submit-btn accent" onclick="loadStudents()" style="padding:8px 16px;font-size:10px;letter-spacing:2px;">↻ REFRESH</button>
+      <button class="submit-btn orange" onclick="exportStudentCSV()" style="padding:8px 16px;font-size:10px;letter-spacing:2px;">↓ EXPORT CSV</button>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>FULL NAME</th>
+            <th>CLASS</th>
+            <th>EMAIL (SYSTEM)</th>
+            <th>TOTAL SOLVES</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody id="roster-body">
+          <tr><td colspan="6" class="table-empty">LOADING ROSTER...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Per-student attendance history -->
+    <div class="history-panel" id="history-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div class="history-panel-title" id="history-panel-title">ATTENDANCE HISTORY</div>
+        <button class="action-btn red" onclick="closeHistory()">✕ CLOSE</button>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>DATE</th>
+              <th>CHALLENGE</th>
+              <th>STATUS</th>
+              <th>SOLVED AT</th>
+              <th>ATTEMPTS</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="form-msg" id="roster-msg"></div>
+  </section>
+
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut,
+    createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, deleteDoc,
+    collection, query, where, getDocs, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCDB4kvtHeCGJco1inelv-WRk09Xyuz5oY",
+  authDomain: "ctf-smk.firebaseapp.com",
+  projectId: "ctf-smk",
+  storageBucket: "ctf-smk.firebasestorage.app",
+  messagingSenderId: "983856640913",
+  appId: "1:983856640913:web:3d584d18c802885020a030"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // ─── SECOND APP INSTANCE ───
+  // Used ONLY for creating student accounts so admin session is never touched
+  const secondApp = initializeApp(firebaseConfig, 'secondary');
+  const secondAuth = getAuth(secondApp);
+
+  let allStudents = [];
+  let deleteTargetUid = null;
+  let resetTargetUid = null;
+  let resetTargetName = null;
+
+  // ─── AUTH GUARD ───
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') { window.location.href = 'index.html'; return; }
+    document.getElementById('admin-name').textContent = userDoc.data().name?.toUpperCase() || 'ADMIN';
+    await loadStudents();
+    document.getElementById('page-loader').classList.add('hidden');
+    document.getElementById('main-content').style.display = 'block';
+  });
+
+  // ─── LOAD STUDENTS ───
+  window.loadStudents = async function() {
+    const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+    allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Count solves per student
+    const solveSnap = await getDocs(query(collection(db, 'attendance'), where('correct', '==', true)));
+    const solveMap = {};
+    solveSnap.docs.forEach(d => {
+      const uid = d.data().uid;
+      solveMap[uid] = (solveMap[uid] || 0) + 1;
+    });
+    allStudents = allStudents.map(s => ({ ...s, totalSolves: solveMap[s.id] || 0 }));
+
+    // Today's absen count
+    const today = getToday();
+    const todaySnap = await getDocs(query(collection(db, 'attendance'), where('date', '==', today), where('correct', '==', true)));
+    const todayUids = new Set(todaySnap.docs.map(d => d.data().uid));
+
+    document.getElementById('stat-total').textContent = allStudents.length;
+    document.getElementById('stat-today').textContent = todayUids.size;
+    document.getElementById('stat-solves').textContent = Object.values(solveMap).reduce((a, b) => a + b, 0);
+
+    renderRoster();
+  };
+
+  // ─── RENDER ROSTER ───
+  window.renderRoster = function() {
+    const search = document.getElementById('roster-search').value.toLowerCase();
+    let data = allStudents;
+    if (search) data = data.filter(s => s.name?.toLowerCase().includes(search) || s.class?.toLowerCase().includes(search));
+
+    const tbody = document.getElementById('roster-body');
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="table-empty">NO STUDENTS FOUND</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map((s, i) => {
+      const email = nameToEmail(s.name);
+      return `<tr>
+        <td style="color:var(--dim)">${i + 1}</td>
+        <td style="font-weight:600;color:var(--text)">${s.name?.toUpperCase() || '—'}</td>
+        <td style="color:var(--dim)">${s.class || '—'}</td>
+        <td style="color:var(--dim);font-size:11px">${email}</td>
+        <td style="color:var(--purple)">${s.totalSolves || 0}</td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="action-btn accent" onclick="viewHistory('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">◈ HISTORY</button>
+            <button class="action-btn orange" onclick="openResetPw('${s.id}','${email}','${(s.name||'').replace(/'/g,"\\'")}')">⚿ RESET PW</button>
+            <button class="action-btn red" onclick="openDeleteModal('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">✕ DELETE</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  };
+
+  // ─── CREATE STUDENT (using secondary app — admin session stays intact) ───
+  window.createStudent = async function() {
+    const name = document.getElementById('f-name').value.trim();
+    const cls = document.getElementById('f-class').value.trim();
+    const pw = document.getElementById('f-password').value;
+    const pw2 = document.getElementById('f-password2').value;
+
+    if (!name || !pw) { showMsg('create-msg', 'NAME AND PASSWORD ARE REQUIRED', 'error'); return; }
+    if (pw !== pw2) { showMsg('create-msg', 'PASSWORDS DO NOT MATCH', 'error'); return; }
+    if (pw.length < 6) { showMsg('create-msg', 'PASSWORD MUST BE AT LEAST 6 CHARACTERS', 'error'); return; }
+
+    showMsg('create-msg', 'REGISTERING STUDENT...', 'loading');
+    try {
+      const email = nameToEmail(name);
+      // Create user on secondAuth — does NOT affect main admin session
+      const cred = await createUserWithEmailAndPassword(secondAuth, email, pw);
+      // Sign out from secondary instance immediately
+      await secondAuth.signOut();
+      // Save to Firestore
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        name, class: cls, email, role: 'student', createdAt: serverTimestamp()
+      });
+      showMsg('create-msg', `STUDENT "${name.toUpperCase()}" REGISTERED SUCCESSFULLY`, 'success');
+      resetCreateForm();
+      await loadStudents();
+    } catch (e) {
+      const msg = e.code === 'auth/email-already-in-use'
+        ? 'A STUDENT WITH THIS NAME ALREADY EXISTS'
+        : 'ERROR: ' + (e.message || e.code);
+      showMsg('create-msg', msg, 'error');
+    }
+  };
+
+  // ─── BULK IMPORT (using secondary app) ───
+  window.bulkImport = async function() {
+    const raw = document.getElementById('bulk-input').value.trim();
+    const defaultPw = document.getElementById('bulk-default-pw').value.trim() || 'ctf2024';
+
+    if (!raw) { showMsg('bulk-msg', 'PASTE STUDENT DATA FIRST', 'error'); return; }
+
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    showMsg('bulk-msg', `IMPORTING ${lines.length} STUDENTS...`, 'loading');
+
+    let success = 0, failed = 0;
+    for (const line of lines) {
+      const parts = line.split(',').map(p => p.trim());
+      const name = parts[0];
+      const cls = parts[1] || '';
+      const pw = parts[2] || defaultPw;
+      if (!name) { failed++; continue; }
+      try {
+        const email = nameToEmail(name);
+        const cred = await createUserWithEmailAndPassword(secondAuth, email, pw);
+        await secondAuth.signOut();
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          name, class: cls, email, role: 'student', createdAt: serverTimestamp()
+        });
+        success++;
+      } catch (e) { failed++; }
+    }
+
+    const type = failed === 0 ? 'success' : success === 0 ? 'error' : 'warning';
+    showMsg('bulk-msg', `DONE — ${success} IMPORTED, ${failed} FAILED`, type);
+    await loadStudents();
+  };
+
+  // ─── VIEW HISTORY ───
+  window.viewHistory = async function(uid, name) {
+    document.getElementById('history-panel-title').textContent = `ATTENDANCE HISTORY — ${name.toUpperCase()}`;
+    document.getElementById('history-panel').classList.add('open');
+    document.getElementById('history-body').innerHTML = `<tr><td colspan="6" class="table-empty">LOADING...</td></tr>`;
+    document.getElementById('history-panel').scrollIntoView({ behavior: 'smooth' });
+
+    const snap = await getDocs(query(collection(db, 'attendance'), where('uid', '==', uid), where('correct', '==', true)));
+    if (snap.empty) {
+      document.getElementById('history-body').innerHTML = `<tr><td colspan="6" class="table-empty">NO SOLVE HISTORY YET</td></tr>`;
+      return;
+    }
+
+    // Count attempts per date
+    const attSnap = await getDocs(query(collection(db, 'attendance'), where('uid', '==', uid)));
+    const attemptMap = {};
+    attSnap.docs.forEach(d => {
+      const date = d.data().date;
+      attemptMap[date] = (attemptMap[date] || 0) + 1;
+    });
+
+    const rows = snap.docs.sort((a,b) => b.data().date?.localeCompare(a.data().date)).map((d, i) => {
+      const data = d.data();
+      const solvedAt = data.solvedAt?.toDate();
+      return `<tr>
+        <td style="color:var(--dim)">${i+1}</td>
+        <td>${data.date || '—'}</td>
+        <td style="color:var(--dim);font-size:11px">${data.challengeId?.substring(0,12) || '—'}...</td>
+        <td style="color:var(--green)">✓ SOLVED</td>
+        <td>${solvedAt ? solvedAt.toLocaleTimeString() : '—'}</td>
+        <td style="color:var(--dim)">${attemptMap[data.date] || 1}</td>
+      </tr>`;
+    });
+
+    document.getElementById('history-body').innerHTML = rows.join('');
+  };
+
+  window.closeHistory = function() {
+    document.getElementById('history-panel').classList.remove('open');
+  };
+
+  // ─── RESET PASSWORD ───
+  window.openResetPw = function(uid, email, name) {
+    resetTargetUid = uid;
+    resetTargetName = name;
+    document.getElementById('pw-modal-sub').textContent = `Reset password for ${name.toUpperCase()}`;
+    document.getElementById('new-pw-input').value = '';
+    document.getElementById('pw-modal-msg').style.display = 'none';
+    document.getElementById('pw-modal').classList.add('open');
+  };
+
+  window.confirmResetPw = async function() {
+    const newPw = document.getElementById('new-pw-input').value;
+    if (!newPw || newPw.length < 6) {
+      showMsg('pw-modal-msg', 'PASSWORD MUST BE AT LEAST 6 CHARACTERS', 'error'); return;
+    }
+    // Without Admin SDK, password reset must be done via Firebase Console
+    // Firebase Console → Authentication → find user → click ⋮ → Reset password
+    showMsg('pw-modal-msg', `TO RESET: Go to Firebase Console → Authentication → find ${resetTargetName?.toUpperCase()} → click ⋮ → Reset password`, 'warning');
+  };
+
+  // ─── DELETE ───
+  window.openDeleteModal = function(uid, name) {
+    deleteTargetUid = uid;
+    document.getElementById('delete-modal-text').textContent = `Delete student "${name.toUpperCase()}"? Their attendance records will remain but login access will be removed permanently.`;
+    document.getElementById('delete-modal').classList.add('open');
+  };
+
+  window.confirmDelete = async function() {
+    if (!deleteTargetUid) return;
+    try {
+      // Remove from Firestore (Auth user stays but can't access without Firestore doc)
+      await deleteDoc(doc(db, 'users', deleteTargetUid));
+      closeModals();
+      await loadStudents();
+      showMsg('roster-msg', 'STUDENT REMOVED FROM SYSTEM', 'success');
+    } catch(e) {
+      showMsg('roster-msg', 'DELETE FAILED — TRY AGAIN', 'error');
+    }
+  };
+
+  window.closeModals = function() {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    deleteTargetUid = null;
+    resetTargetUid = null;
+  };
+
+  // ─── TABS ───
+  window.switchTab = function(tab, el) {
+    document.querySelectorAll('.form-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(`tab-${tab}`).classList.add('active');
+  };
+
+  // ─── RESET FORM ───
+  window.resetCreateForm = function() {
+    ['f-name','f-class','f-password','f-password2'].forEach(id => document.getElementById(id).value = '');
+    ['pb1','pb2','pb3','pb4'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.className = 'pw-bar'; }
+    });
+    document.getElementById('pw-label-single').textContent = 'ENTER PASSWORD';
+    document.getElementById('create-msg').style.display = 'none';
+  };
+
+  // ─── EXPORT CSV ───
+  window.exportStudentCSV = function() {
+    const rows = [['#','NAME','CLASS','EMAIL','TOTAL SOLVES']];
+    allStudents.forEach((s, i) => {
+      rows.push([i+1, s.name?.toUpperCase() || '—', s.class || '—', nameToEmail(s.name), s.totalSolves || 0]);
+    });
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `students_roster.csv`;
+    a.click();
+  };
+
+  // ─── PASSWORD STRENGTH ───
+  window.checkStrength = function(inputId, barPrefix, labelId) {
+    const val = document.getElementById(inputId).value;
+    const bars = [1,2,3,4].map(n => document.getElementById(`${barPrefix}${n}`));
+    const label = document.getElementById(labelId);
+    let score = 0;
+    if (val.length >= 6) score++;
+    if (val.length >= 10) score++;
+    if (/[A-Z]/.test(val) || /[0-9]/.test(val)) score++;
+    if (/[^a-zA-Z0-9]/.test(val)) score++;
+    const classes = ['weak','weak','medium','strong'];
+    const labels = ['WEAK','WEAK','MEDIUM','STRONG'];
+    bars.forEach((b, i) => { b.className = 'pw-bar' + (i < score ? ' ' + classes[score-1] : ''); });
+    label.textContent = score > 0 ? labels[score-1] : 'ENTER PASSWORD';
+  };
+
+  // Modal password strength
+  document.getElementById('new-pw-input').addEventListener('input', function() {
+    const val = this.value;
+    const bars = [1,2,3,4].map(n => document.getElementById(`mpb${n}`));
+    const label = document.getElementById('mpw-label');
+    let score = 0;
+    if (val.length >= 6) score++;
+    if (val.length >= 10) score++;
+    if (/[A-Z]/.test(val) || /[0-9]/.test(val)) score++;
+    if (/[^a-zA-Z0-9]/.test(val)) score++;
+    const classes = ['weak','weak','medium','strong'];
+    const labels = ['WEAK','WEAK','MEDIUM','STRONG'];
+    bars.forEach((b, i) => { b.className = 'pw-bar' + (i < score ? ' ' + classes[score-1] : ''); });
+    label.textContent = score > 0 ? labels[score-1] : 'ENTER PASSWORD';
+  });
+
+  // ─── LOGOUT ───
+  window.handleLogout = async function() {
+    await signOut(auth);
+    window.location.href = 'index.html';
+  };
+
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.className = `form-msg ${type}`;
+    el.innerHTML = type === 'loading' ? `<span class="spinner"></span>${text}` : `${text}`;
+  }
+
+  function nameToEmail(name) {
+    return name ? `${name.toLowerCase().replace(/\s+/g, '.')}@ctf.student` : '';
+  }
+
+  function getToday() { return new Date().toISOString().split('T')[0]; }
+</script>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('live-time').textContent =
+    `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} · ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+
+</body>
+</html>

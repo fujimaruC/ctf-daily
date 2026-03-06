@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF Daily Challenge</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #030912;
+  --bg2:      #060f1c;
+  --bg3:      #0a1628;
+  --accent:   #00c8ff;
+  --accent2:  #0055ff;
+  --green:    #00ff9d;
+  --orange:   #ff7b35;
+  --red:      #ff2d55;
+  --yellow:   #ffd060;
+  --purple:   #a855f7;
+  --text:     #b8d4ec;
+  --dim:      #3a5878;
+  --border:   rgba(0,180,255,0.12);
+  --panel:    rgba(0,140,255,0.04);
+  --glow:     0 0 20px rgba(0,200,255,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ─── GRID BACKGROUND ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,180,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,180,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* ─── SCAN LINE OVERLAY ─── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* ─── STATUS BAR ─── */
+.status-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 36px;
+  background: rgba(3,9,18,0.97);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  z-index: 200;
+  backdrop-filter: blur(12px);
+}
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s infinite;
+}
+.status-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.status-label span { color: var(--accent); }
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--dim);
+}
+#live-time { color: var(--accent); }
+.logout-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--red);
+  border: 1px solid rgba(255,45,85,0.3);
+  padding: 3px 10px;
+  cursor: pointer;
+  background: rgba(255,45,85,0.05);
+  transition: all 0.2s;
+}
+.logout-btn:hover {
+  background: rgba(255,45,85,0.12);
+  box-shadow: 0 0 10px rgba(255,45,85,0.15);
+}
+
+/* ─── SIDEBAR ─── */
+.sidenav {
+  position: fixed;
+  left: 0; top: 36px; bottom: 0;
+  width: 230px;
+  background: rgba(3,9,18,0.97);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 0;
+  backdrop-filter: blur(12px);
+}
+.sidenav-logo {
+  padding: 0 24px 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.logo-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: var(--accent);
+  display: block;
+}
+.logo-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--dim);
+  margin-top: 4px;
+  display: block;
+}
+
+/* ─── STUDENT INFO CARD ─── */
+.student-card {
+  margin: 0 16px 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  position: relative;
+}
+.student-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+}
+.student-card-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.student-card-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+.student-card-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+.status-badge {
+  padding: 2px 8px;
+  font-size: 9px;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 2px;
+}
+.status-badge.done {
+  border: 1px solid rgba(0,255,157,0.4);
+  color: var(--green);
+  background: rgba(0,255,157,0.06);
+}
+.status-badge.pending {
+  border: 1px solid rgba(255,123,53,0.4);
+  color: var(--orange);
+  background: rgba(255,123,53,0.06);
+}
+
+.nav-section-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  padding: 8px 24px 4px;
+  text-transform: uppercase;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  text-decoration: none;
+  color: var(--dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.nav-item:hover { color: var(--text); border-left-color: rgba(0,200,255,0.3); background: rgba(0,180,255,0.03); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,200,255,0.05); }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* ─── MAIN CONTENT ─── */
+.main {
+  margin-left: 230px;
+  padding-top: 36px;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── PAGE SECTIONS ─── */
+.section {
+  padding: 52px 52px;
+  border-bottom: 1px solid var(--border);
+}
+.section:last-child { border-bottom: none; }
+
+/* ─── SECTION HEADER ─── */
+.sec-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.sec-num {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  opacity: 0.6;
+}
+.sec-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+.sec-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── HERO SECTION ─── */
+.hero {
+  padding: 60px 52px 48px;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 70% 0%, rgba(0,100,255,0.07) 0%, transparent 70%);
+  border-bottom: 1px solid var(--border);
+}
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.hero-left {}
+.hero-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 5px;
+  color: var(--accent);
+  opacity: 0.7;
+  margin-bottom: 14px;
+  display: block;
+}
+.hero-title {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 900;
+  letter-spacing: 4px;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+  max-width: 600px;
+}
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 4px 12px;
+  border: 1px solid;
+  text-transform: uppercase;
+}
+.badge-easy   { border-color: rgba(0,255,157,0.4); color: var(--green); background: rgba(0,255,157,0.06); }
+.badge-medium { border-color: rgba(255,208,96,0.4); color: var(--yellow); background: rgba(255,208,96,0.06); }
+.badge-hard   { border-color: rgba(255,45,85,0.4); color: var(--red); background: rgba(255,45,85,0.06); }
+.badge-cat    { border-color: rgba(0,200,255,0.3); color: var(--accent); background: rgba(0,200,255,0.05); }
+.badge-pts    { border-color: rgba(168,85,247,0.4); color: var(--purple); background: rgba(168,85,247,0.06); }
+
+/* ─── COUNTDOWN ─── */
+.countdown-box {
+  background: rgba(6,15,28,0.8);
+  border: 1px solid var(--border);
+  padding: 20px 28px;
+  text-align: center;
+  position: relative;
+  min-width: 200px;
+}
+.countdown-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+  opacity: 0.6;
+}
+.countdown-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+.countdown-time {
+  font-family: 'Orbitron', monospace;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--orange);
+  letter-spacing: 4px;
+  text-shadow: 0 0 20px rgba(255,123,53,0.4);
+}
+.countdown-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--dim);
+  margin-top: 6px;
+}
+
+/* ─── NO CHALLENGE ─── */
+.no-challenge {
+  text-align: center;
+  padding: 80px 40px;
+}
+.no-challenge-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  opacity: 0.4;
+}
+.no-challenge-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  letter-spacing: 4px;
+  color: var(--dim);
+  margin-bottom: 10px;
+}
+.no-challenge-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--dim);
+  opacity: 0.6;
+}
+
+/* ─── DESCRIPTION PANEL ─── */
+.desc-panel {
+  background: rgba(6,15,28,0.7);
+  border: 1px solid var(--border);
+  padding: 32px;
+  position: relative;
+  margin-bottom: 8px;
+}
+.desc-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+}
+.desc-text {
+  font-size: 17px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+/* ─── HINT SYSTEM ─── */
+.hints-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.hint-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.hint-card:hover { border-color: rgba(0,200,255,0.25); background: rgba(0,140,255,0.06); }
+.hint-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.hint-num {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--yellow);
+}
+.hint-cost {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--dim);
+}
+.hint-content {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  filter: blur(5px);
+  transition: filter 0.3s;
+  user-select: none;
+}
+.hint-card.revealed .hint-content {
+  filter: blur(0);
+  color: var(--text);
+}
+.hint-reveal-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--yellow);
+  border: 1px solid rgba(255,208,96,0.3);
+  padding: 3px 10px;
+  cursor: pointer;
+  background: rgba(255,208,96,0.05);
+  transition: all 0.2s;
+  margin-top: 10px;
+  display: inline-block;
+}
+.hint-reveal-btn:hover { background: rgba(255,208,96,0.1); }
+.hint-card.revealed .hint-reveal-btn { display: none; }
+
+/* ─── FLAG SUBMISSION ─── */
+.flag-panel {
+  background: rgba(6,15,28,0.8);
+  border: 1px solid var(--border);
+  padding: 36px;
+  position: relative;
+}
+.flag-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  opacity: 0.5;
+}
+.flag-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+.flag-prefix {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  color: var(--accent);
+  background: rgba(0,200,255,0.06);
+  border: 1px solid var(--border);
+  border-right: none;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.flag-input {
+  flex: 1;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  padding: 14px 18px;
+  outline: none;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+.flag-input::placeholder {
+  color: var(--dim);
+  opacity: 0.4;
+  font-size: 13px;
+}
+.flag-input:focus {
+  border-color: rgba(0,255,157,0.4);
+  box-shadow: 0 0 0 1px rgba(0,255,157,0.1), inset 0 0 20px rgba(0,255,157,0.03);
+  background: rgba(0,20,10,0.4);
+}
+.flag-submit-btn {
+  padding: 14px 28px;
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.25s;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.flag-submit-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(0,255,157,0.08);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.flag-submit-btn:hover::before { opacity: 1; }
+.flag-submit-btn:hover {
+  box-shadow: 0 0 20px rgba(0,255,157,0.2);
+  text-shadow: 0 0 8px rgba(0,255,157,0.5);
+}
+
+/* ─── ALREADY SOLVED BANNER ─── */
+.solved-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(0,255,157,0.04);
+  border: 1px solid rgba(0,255,157,0.25);
+  padding: 20px 28px;
+  margin-bottom: 16px;
+}
+.solved-icon { font-size: 24px; }
+.solved-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--green);
+}
+.solved-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+
+/* ─── SUBMISSION HISTORY ─── */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.history-table th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+}
+.history-table td {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0,180,255,0.05);
+  color: var(--text);
+  letter-spacing: 1px;
+}
+.history-table tr:last-child td { border-bottom: none; }
+.history-table tr:hover td { background: rgba(0,180,255,0.02); }
+.attempt-wrong { color: var(--red); }
+.attempt-correct { color: var(--green); }
+
+/* ─── FORM MSG ─── */
+.form-msg {
+  margin-top: 14px;
+  padding: 12px 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  display: none;
+}
+.form-msg.error { display: block; border: 1px solid rgba(255,45,85,0.3); color: var(--red); background: rgba(255,45,85,0.05); }
+.form-msg.success { display: block; border: 1px solid rgba(0,255,157,0.3); color: var(--green); background: rgba(0,255,157,0.05); }
+.form-msg.loading { display: block; border: 1px solid rgba(0,200,255,0.2); color: var(--accent); background: rgba(0,200,255,0.04); }
+
+/* ─── SPINNER ─── */
+.spinner {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 1px solid rgba(0,200,255,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* ─── CORNER DECO ─── */
+.corner { position: fixed; width: 50px; height: 50px; z-index: 2; pointer-events: none; }
+.corner-tl { top: 44px; left: 240px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.25; }
+.corner-tr { top: 44px; right: 16px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.25; }
+.corner-bl { bottom: 16px; left: 240px; border-bottom: 1px solid var(--accent); border-left: 1px solid var(--accent); opacity: 0.25; }
+.corner-br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); opacity: 0.25; }
+
+/* ─── PARTICLES ─── */
+.particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.particle {
+  position: absolute; width: 2px; height: 2px;
+  background: var(--accent); border-radius: 50%; opacity: 0;
+  animation: floatUp var(--dur) linear var(--delay) infinite;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes floatUp {
+  0% { transform: translateY(100vh); opacity: 0; }
+  10% { opacity: 0.3; }
+  90% { opacity: 0.1; }
+  100% { transform: translateY(-10vh); opacity: 0; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes solvedPop {
+  0% { transform: scale(0.95); opacity: 0; }
+  60% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.anim-in { animation: fadeInUp 0.6s ease both; }
+
+/* ─── LOADING OVERLAY ─── */
+.page-loader {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  transition: opacity 0.4s;
+}
+.page-loader.hidden { opacity: 0; pointer-events: none; }
+.loader-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: var(--accent);
+  animation: pulse 1.5s infinite;
+}
+.loader-bar {
+  width: 200px; height: 2px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.loader-bar::after {
+  content: '';
+  position: absolute;
+  left: -40%; top: 0; bottom: 0;
+  width: 40%;
+  background: var(--accent);
+  animation: loadSlide 1s ease infinite;
+}
+@keyframes loadSlide {
+  from { left: -40%; } to { left: 100%; }
+}
+
+/* ─── FILE DOWNLOAD ─── */
+.file-download-btn {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 14px 24px; border: 1px solid rgba(0,255,157,0.35);
+  background: rgba(0,255,157,0.04); color: var(--green);
+  text-decoration: none; font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; letter-spacing: 2px; transition: all 0.2s;
+  margin-top: 16px; cursor: pointer;
+}
+.file-download-btn:hover { background: rgba(0,255,157,0.09); box-shadow: 0 0 16px rgba(0,255,157,0.12); }
+.file-download-icon { font-size: 18px; }
+.file-download-info { display: flex; flex-direction: column; gap: 2px; }
+.file-download-name { color: var(--green); font-size: 13px; }
+.file-download-size { color: var(--dim); font-size: 10px; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<!-- Page Loader -->
+<div class="page-loader" id="page-loader">
+  <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:900;letter-spacing:6px;color:var(--accent)">CTF DAILY</div>
+  <div class="loader-bar"></div>
+  <div class="loader-text">LOADING SESSION...</div>
+</div>
+
+<!-- Particles -->
+<div class="particles" id="particles"></div>
+
+<!-- Corner Deco -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-left">
+    <div class="status-dot"></div>
+    <span class="status-label">SESSION <span>ACTIVE</span></span>
+    <span class="status-label">CTF-PLATFORM <span>v1.0</span></span>
+  </div>
+  <div class="status-right">
+    <span id="live-time"></span>
+    <div class="logout-btn" onclick="handleLogout()">◈ LOGOUT</div>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidenav">
+  <div class="sidenav-logo">
+    <span class="logo-text">CTF DAILY</span>
+    <span class="logo-sub">CHALLENGE PLATFORM v1.0</span>
+  </div>
+
+  <div class="student-card" id="student-card">
+    <div class="student-card-label">LOGGED IN AS</div>
+    <div class="student-card-name" id="student-name">LOADING...</div>
+    <div class="student-card-status">
+      <span id="absen-badge" class="status-badge pending">● PENDING</span>
+    </div>
+  </div>
+
+  <div class="nav-section-label">NAVIGATION</div>
+  <div class="nav-item active" onclick="scrollToSection('challenge')">
+    <span class="nav-dot"></span> TODAY'S CHALLENGE
+  </div>
+  <div class="nav-item" onclick="scrollToSection('description')">
+    <span class="nav-dot"></span> DESCRIPTION
+  </div>
+  <div class="nav-item" onclick="scrollToSection('challenge-file')">
+    <span class="nav-dot"></span> CHALLENGE FILE
+  </div>
+  <div class="nav-item" onclick="scrollToSection('hints')">
+    <span class="nav-dot"></span> HINTS
+  </div>
+  <div class="nav-item" onclick="scrollToSection('submit')">
+    <span class="nav-dot"></span> SUBMIT FLAG
+  </div>
+  <div class="nav-item" onclick="scrollToSection('history')">
+    <span class="nav-dot"></span> MY ATTEMPTS
+  </div>
+</nav>
+
+<!-- Main Content -->
+<div class="main" id="main-content" style="display:none;">
+
+  <!-- ══════ SECTION 01: HERO ══════ -->
+  <div class="hero" id="challenge">
+    <div class="hero-top">
+      <div class="hero-left">
+        <span class="hero-label">TODAY'S MISSION — <span id="today-date"></span></span>
+        <div class="hero-title" id="challenge-title">LOADING CHALLENGE...</div>
+        <div class="hero-meta" id="challenge-meta">
+          <!-- badges injected here -->
+        </div>
+      </div>
+      <div class="countdown-box">
+        <div class="countdown-label">NEXT CHALLENGE IN</div>
+        <div class="countdown-time" id="countdown">--:--:--</div>
+        <div class="countdown-sub">HH · MM · SS</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ SECTION 02: DESCRIPTION ══════ -->
+  <section class="section anim-in" id="description">
+    <div class="sec-header">
+      <span class="sec-num">02</span>
+      <span class="sec-title">MISSION BRIEFING</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="desc-panel">
+      <div class="desc-text" id="challenge-desc">Loading mission briefing...</div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 03: CHALLENGE FILE ══════ -->
+  <section class="section anim-in" id="challenge-file" style="display:none;">
+    <div class="sec-header">
+      <span class="sec-num">03</span>
+      <span class="sec-title">CHALLENGE FILE</span>
+      <span class="sec-line"></span>
+    </div>
+    <div style="background:rgba(6,15,28,0.7);border:1px solid var(--border);padding:28px 32px;position:relative;">
+      <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0.4;"></div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--dim);margin-bottom:4px;">DOWNLOAD THE CHALLENGE FILE TO GET STARTED</div>
+      <a class="file-download-btn" id="file-download-btn" href="#" download target="_blank">
+        <span class="file-download-icon">↓</span>
+        <div class="file-download-info">
+          <span class="file-download-name" id="file-download-name">CHALLENGE FILE</span>
+          <span class="file-download-size" id="file-download-size"></span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 04: HINTS ══════ -->
+  <section class="section anim-in" id="hints">
+    <div class="sec-header">
+      <span class="sec-num">04</span>
+      <span class="sec-title">INTELLIGENCE HINTS</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="hints-grid" id="hints-grid">
+      <!-- hints injected here -->
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 04: SUBMIT FLAG ══════ -->
+  <section class="section anim-in" id="submit">
+    <div class="sec-header">
+      <span class="sec-num">05</span>
+      <span class="sec-title">FLAG SUBMISSION</span>
+      <span class="sec-line"></span>
+    </div>
+
+    <!-- Solved Banner (hidden by default) -->
+    <div class="solved-banner" id="solved-banner" style="display:none;">
+      <div class="solved-icon">✓</div>
+      <div>
+        <div class="solved-title">CHALLENGE COMPLETE — ABSEN RECORDED</div>
+        <div class="solved-time" id="solved-time-text"></div>
+      </div>
+    </div>
+
+    <div class="flag-panel" id="flag-panel">
+      <div class="flag-input-row">
+        <div class="flag-prefix">CTF{</div>
+        <input type="text" class="flag-input" id="flag-input" placeholder="your_flag_here..." autocomplete="off" />
+        <button class="flag-submit-btn" onclick="submitFlag()" id="flag-btn">SUBMIT</button>
+      </div>
+      <div class="form-msg" id="flag-msg"></div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 05: HISTORY ══════ -->
+  <section class="section anim-in" id="history">
+    <div class="sec-header">
+      <span class="sec-num">06</span>
+      <span class="sec-title">ATTEMPT LOG</span>
+      <span class="sec-line"></span>
+    </div>
+    <div style="border: 1px solid var(--border); overflow: hidden;">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>TIMESTAMP</th>
+            <th>FLAG SUBMITTED</th>
+            <th>RESULT</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="4" style="text-align:center;color:var(--dim);padding:24px;font-size:11px;letter-spacing:2px;">NO ATTEMPTS YET</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<!-- No Challenge Screen -->
+<div class="main" id="no-challenge-screen" style="display:none;">
+  <div class="no-challenge">
+    <div class="no-challenge-icon">◈</div>
+    <div class="no-challenge-title">NO ACTIVE CHALLENGE</div>
+    <div class="no-challenge-sub">STANDBY — ADMIN WILL ACTIVATE TODAY'S MISSION SOON</div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, collection, query, where, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ─── FIREBASE CONFIG ───
+  const firebaseConfig = {
+  apiKey: "AIzaSyCDB4kvtHeCGJco1inelv-WRk09Xyuz5oY",
+  authDomain: "ctf-smk.firebaseapp.com",
+  projectId: "ctf-smk",
+  storageBucket: "ctf-smk.firebasestorage.app",
+  messagingSenderId: "983856640913",
+  appId: "1:983856640913:web:3d584d18c802885020a030"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  // auth is now accessible globally for getIdToken() calls
+
+  let currentUser = null;
+  let currentChallenge = null;
+  let attemptCount = 0;
+
+  // ─── AUTH GUARD ───
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'student') {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    currentUser = { uid: user.uid, ...userDoc.data() };
+    document.getElementById('student-name').textContent = currentUser.name.toUpperCase();
+
+    await loadTodayChallenge();
+    await checkAbsenStatus();
+    await loadAttemptHistory();
+
+    document.getElementById('page-loader').classList.add('hidden');
+    document.getElementById('main-content').style.display = 'block';
+  });
+
+  // ─── LOAD TODAY'S CHALLENGE ───
+  async function loadTodayChallenge() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('today-date').textContent = today;
+
+    const q = query(collection(db, 'challenges'), where('active', '==', true), where('date', '==', today));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      document.getElementById('main-content').style.display = 'none';
+      document.getElementById('no-challenge-screen').style.display = 'block';
+      document.getElementById('page-loader').classList.add('hidden');
+      return;
+    }
+
+    const data = snap.docs[0].data();
+    currentChallenge = { id: snap.docs[0].id, ...data };
+
+    // Title
+    document.getElementById('challenge-title').textContent = data.title;
+
+    // Badges
+    const diffClass = { easy: 'badge-easy', medium: 'badge-medium', hard: 'badge-hard' }[data.difficulty] || 'badge-cat';
+    document.getElementById('challenge-meta').innerHTML = `
+      <span class="badge ${diffClass}">${data.difficulty?.toUpperCase() || 'UNKNOWN'}</span>
+      <span class="badge badge-cat">${data.category?.toUpperCase() || 'GENERAL'}</span>
+      <span class="badge badge-pts">◈ ${data.points || 100} PTS</span>
+    `;
+
+    // Description
+    document.getElementById('challenge-desc').textContent = data.description;
+
+    // File download
+    if (data.fileUrl) {
+      document.getElementById('challenge-file').style.display = 'block';
+      document.getElementById('file-download-btn').href = data.fileUrl;
+      document.getElementById('file-download-name').textContent = data.fileName || 'CHALLENGE FILE';
+      document.getElementById('file-download-size').textContent = 'CLICK TO DOWNLOAD';
+    }
+
+    // Hints
+    const hintsGrid = document.getElementById('hints-grid');
+    if (data.hints && data.hints.length > 0) {
+      hintsGrid.innerHTML = data.hints.map((h, i) => `
+        <div class="hint-card" id="hint-${i}">
+          <div class="hint-card-header">
+            <span class="hint-num">HINT ${String(i+1).padStart(2,'0')}</span>
+            <span class="hint-cost">CLICK TO REVEAL</span>
+          </div>
+          <div class="hint-content">${h}</div>
+          <div class="hint-reveal-btn" onclick="revealHint(${i})">▶ REVEAL HINT</div>
+        </div>
+      `).join('');
+    } else {
+      hintsGrid.innerHTML = `<div style="font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--dim)">NO HINTS AVAILABLE FOR THIS CHALLENGE</div>`;
+    }
+  }
+
+  // ─── CHECK ABSEN STATUS ───
+  async function checkAbsenStatus() {
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(db, 'attendance'),
+      where('uid', '==', currentUser.uid),
+      where('date', '==', today),
+      where('correct', '==', true)
+    );
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const data = snap.docs[0].data();
+      markAsSolved(data.solvedAt?.toDate());
+    }
+  }
+
+  // ─── LOAD ATTEMPT HISTORY ───
+  async function loadAttemptHistory() {
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(db, 'attendance'),
+      where('uid', '==', currentUser.uid),
+      where('date', '==', today)
+    );
+    const snap = await getDocs(q);
+
+    const tbody = document.getElementById('history-body');
+    if (snap.empty) return;
+
+    attemptCount = snap.docs.length;
+    const rows = snap.docs.map((d, i) => {
+      const data = d.data();
+      const ts = data.submittedAt?.toDate();
+      const timeStr = ts ? ts.toLocaleTimeString() : '--:--:--';
+      const flagDisplay = data.flag ? `${data.flag.substring(0,15)}...}` : '(empty)';
+      const resultClass = data.correct ? 'attempt-correct' : 'attempt-wrong';
+      const resultText = data.correct ? '✓ CORRECT' : '✗ WRONG';
+      return `<tr>
+        <td>${snap.docs.length - i}</td>
+        <td>${timeStr}</td>
+        <td>${flagDisplay}</td>
+        <td class="${resultClass}">${resultText}</td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = rows.reverse().join('');
+  }
+
+  // ─── SUBMIT FLAG ───
+  window.submitFlag = async function() {
+    if (!currentChallenge || !auth.currentUser) return;
+
+    const rawInput = document.getElementById('flag-input').value.trim();
+    if (!rawInput) {
+      showFlagMsg('ENTER A FLAG FIRST', 'error');
+      return;
+    }
+
+    showFlagMsg('VERIFYING FLAG...', 'loading');
+    document.getElementById('flag-btn').disabled = true;
+
+    try {
+      // Get ID token from current user
+      const idToken = await auth.currentUser.getIdToken();
+
+      // Call serverless function
+      const response = await fetch('/.netlify/functions/submitFlag', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          idToken: idToken,
+          challengeId: currentChallenge.id,
+          flagInput: rawInput
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.status === 200) {
+        if (data.correct) {
+          showFlagMsg('FLAG ACCEPTED — ABSEN RECORDED!', 'success');
+          setTimeout(() => markAsSolved(new Date()), 800);
+        } else {
+          showFlagMsg(`INCORRECT FLAG — ATTEMPT #${data.attempts}`, 'error');
+          document.getElementById('flag-btn').disabled = false;
+        }
+        await loadAttemptHistory();
+      } else if (response.status === 429) {
+        showFlagMsg(data.error || 'MAX ATTEMPTS REACHED', 'error');
+        document.getElementById('flag-btn').disabled = false;
+      } else if (response.status === 400) {
+        showFlagMsg(data.error || 'ALREADY SOLVED', 'error');
+        document.getElementById('flag-btn').disabled = false;
+      } else {
+        showFlagMsg(data.error || 'ERROR — TRY AGAIN', 'error');
+        document.getElementById('flag-btn').disabled = false;
+      }
+    } catch (err) {
+      console.error('Submit flag error:', err);
+      showFlagMsg('ERROR — TRY AGAIN', 'error');
+      document.getElementById('flag-btn').disabled = false;
+    }
+  };
+
+  // ─── MARK AS SOLVED ───
+  function markAsSolved(time) {
+    const timeStr = time ? time.toLocaleTimeString() : '';
+    document.getElementById('absen-badge').className = 'status-badge done';
+    document.getElementById('absen-badge').textContent = '● ABSEN';
+    document.getElementById('solved-banner').style.display = 'flex';
+    document.getElementById('solved-banner').style.animation = 'solvedPop 0.5s ease both';
+    document.getElementById('solved-time-text').textContent = `COMPLETED AT ${timeStr}`;
+    document.getElementById('flag-panel').style.opacity = '0.4';
+    document.getElementById('flag-panel').style.pointerEvents = 'none';
+    document.getElementById('flag-btn').disabled = true;
+  }
+
+  // ─── HINT REVEAL ───
+  window.revealHint = function(i) {
+    document.getElementById(`hint-${i}`).classList.add('revealed');
+  };
+
+  // ─── LOGOUT ───
+  window.handleLogout = async function() {
+    await signOut(auth);
+    window.location.href = 'index.html';
+  };
+
+  function showFlagMsg(text, type) {
+    const el = document.getElementById('flag-msg');
+    el.className = `form-msg ${type}`;
+    el.innerHTML = type === 'loading'
+      ? `<span class="spinner"></span>${text}`
+      : `${text}`;
+  }
+
+  // ─── ENTER KEY ───
+  document.getElementById('flag-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') window.submitFlag();
+  });
+</script>
+
+<script>
+// ─── SCROLL NAV ───
+function scrollToSection(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+// ─── LIVE CLOCK ───
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('live-time').textContent =
+    `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} · ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+  // Countdown to midnight
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  const diff = midnight - now;
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  const el = document.getElementById('countdown');
+  if (el) el.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ─── DATE ───
+const now = new Date();
+const pad = n => String(n).padStart(2, '0');
+const dateEl = document.getElementById('today-date');
+if (dateEl) dateEl.textContent = `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())}`;
+
+// ─── PARTICLES ───
+const container = document.getElementById('particles');
+for (let i = 0; i < 18; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + 'vw';
+  p.style.setProperty('--dur', (8 + Math.random() * 12) + 's');
+  p.style.setProperty('--delay', (Math.random() * 10) + 's');
+  container.appendChild(p);
+}
+</script>
+
+</body>
+</html>
